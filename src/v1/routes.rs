@@ -102,6 +102,30 @@ async fn users(db_pool: web::Data<MySqlPool>) -> impl Responder {
     }
 }
 
+#[get("/v1/random")]
+async fn random(params: web::Query<MemeFilterQuery>, db_pool: web::Data<MySqlPool>) -> impl Responder {
+    let q = Meme::get_random(params.0, db_pool.get_ref()).await;
+    match q {
+        Ok(random) => HttpResponse::Ok().json(MemeResponse {
+            status: 200,
+            error: None,
+            meme: Some(random)
+        }),
+        Err(err) => match err {
+            Error::RowNotFound => HttpResponse::NotFound().json(MemeResponse {
+                status: 404,
+                error: Some(String::from("Meme not found")),
+                meme: None
+            }),
+            _ => HttpResponse::InternalServerError().json(MemeResponse {
+                status: 500,
+                error: Some(String::from("Internal Server Error")),
+                meme: None
+            })
+        }
+    }
+}
+
 //TODO: Implement random meme endpoint
 //TODO: Implement upload endpoint
 
@@ -112,4 +136,5 @@ pub fn init(cfg: &mut web::ServiceConfig) {
     cfg.service(categories);
     cfg.service(user);
     cfg.service(users);
+    cfg.service(random);
 }

@@ -45,6 +45,23 @@ impl Meme {
         Ok(q)
     }
 
+    pub async fn get_random(params: MemeFilterQuery, pool: &MySqlPool) -> Result<Meme> {
+        let q: Meme = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ?) ORDER BY RAND()")
+            .bind(params.category.unwrap_or(String::from("%")))
+            .bind(format!("%{}%", params.user.unwrap_or(String::from(""))))
+            .bind(format!("%{}%", params.search.unwrap_or(String::from(""))))
+            .map(|row: MySqlRow| Meme::from(DBMeme {
+                id: row.get("id"),
+                filename: row.get("filename"),
+                user: row.get("name"),
+                userdir: row.get("user"),
+                category: row.get("category"),
+                timestamp: row.get("ts"),
+            }))
+            .fetch_one(pool).await?;
+        Ok(q)
+    }
+
 }
 
 impl From<DBMeme> for Meme {
