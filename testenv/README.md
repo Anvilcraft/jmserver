@@ -14,3 +14,9 @@ The docker compose file contains these containers:
 2. A caddy HTTP server as a CDN. It serves just `/0/uff.png` as an example meme.
 3. An adminer admin interface for mariadb, allowing easy inspection and modification of the database.
 
+Ports:
+- 8080: adminer
+- 8081: JM API
+- 8082: CDN
+- 3306: MariaDB
+
