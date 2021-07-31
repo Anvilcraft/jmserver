@@ -9,8 +9,17 @@ services:
       MARIADB_USER: jensmemes
       MARIADB_PASSWORD: snens
       MARIADB_DATABASE: jensmemes
+    volumes:
+      - "./mariadb_init:/docker-entrypoint-initdb.d"
     
   adminer:
     image: adminer
     ports:
       - 8080:8080
+
+  cdn:
+    image: caddy
+    ports:
+      - "8082:80"
+    volumes:
+      - "./cdn:/usr/share/caddy"
