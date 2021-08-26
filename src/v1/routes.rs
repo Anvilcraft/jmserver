@@ -1,140 +1,139 @@
-use actix_web::{web, get, Responder, HttpResponse};
 use crate::v1::models::*;
 use sqlx::{MySqlPool, Error};
+use axum::{Router, Json};
+use axum::routing::BoxRoute;
+use axum::response::IntoResponse;
+use axum::handler::get;
+use axum::extract::{Query, Extension};
+use axum::http::StatusCode;
 
-#[get("/v1/meme")]
-async fn meme(params: web::Query<MemeIDQuery>, db_pool: web::Data<MySqlPool>) -> impl Responder {
-    let q = Meme::get(params.id, db_pool.get_ref()).await;
+async fn meme(params: Query<MemeIDQuery>, Extension(db_pool): Extension<MySqlPool>) -> impl IntoResponse {
+    let q = Meme::get(params.id, &db_pool).await;
     match q {
-        Ok(meme) => HttpResponse::Ok().json(MemeResponse {
+        Ok(meme) => (StatusCode::OK, Json(MemeResponse {
             status: 200,
             error: None,
-            meme: Option::from(meme)
-        }),
+            meme: Some(meme)
+        })),
         Err(err) => match err {
-            Error::RowNotFound => HttpResponse::NotFound().json(MemeResponse {
-                status: 404,
-                error: Option::from(String::from("Meme not found")),
-                meme: None
-            }),
-            _ => HttpResponse::InternalServerError().json(MemeResponse {
-                status: 500,
-                error: Option::from(String::from("Internal Server Error")),
-                meme: None
-            })
-        }
-    }
-}
-
-#[get("/v1/memes")]
-async fn memes(params: web::Query<MemeFilterQuery>, db_pool: web::Data<MySqlPool>) -> impl Responder {
-    let q = Meme::get_all(params.0, db_pool.get_ref()).await;
-    match q {
-        Ok(memes) => HttpResponse::Ok().json(MemesResponse {
-            status: 200,
-            error: None,
-            memes: Option::from(memes)
-        }),
-        _ => HttpResponse::InternalServerError().json(MemesResponse {
-            status: 500,
-            error: Option::from(String::from("Internal Server Error")),
-            memes: None
-        })
-    }
-}
-
-#[get("/v1/category")]
-async fn category(params: web::Query<IDQuery>, db_pool: web::Data<MySqlPool>) -> impl Responder {
-    let q = Category::get(&params.id, db_pool.get_ref()).await;
-    match q {
-        Ok(category) => HttpResponse::Ok().json(CategoryResponse { status: 200, error: None, category: Option::from(category)}),
-        Err(err) => match err {
-            Error::RowNotFound => HttpResponse::NotFound().json(CategoryResponse {
-                status: 404,
-                error: Option::from(String::from("Category not found")),
-                category: None
-            }),
-            _ => HttpResponse::InternalServerError().json(CategoryResponse {
-                status: 500,
-                error: Option::from(String::from("Internal Server Error")),
-                category: None
-            })
-        }
-    }
-}
-
-#[get("/v1/categories")]
-async fn categories(db_pool: web::Data<MySqlPool>) -> impl Responder {
-    let q = Category::get_all(db_pool.get_ref()).await;
-    match q {
-        Ok(categories) => HttpResponse::Ok().json(CategoriesResponse { status: 200, error: None, categories: Option::from(categories)}),
-        _ => HttpResponse::InternalServerError().json(CategoriesResponse {
-            status: 500,
-            error: Option::from(String::from("Internal Server Error")),
-            categories: None
-        })
-    }
-}
-
-#[get("/v1/user")]
-async fn user(params: web::Query<UserIDQuery>, db_pool: web::Data<MySqlPool>) -> impl Responder {
-    let q = User::get(params.0,db_pool.get_ref()).await;
-    match q {
-        Ok(user) => HttpResponse::Ok().json(UserResponse { status: 200, error: None, user: Option::from(user)}),
-        _ => HttpResponse::InternalServerError().json(UserResponse {
-            status: 500,
-            error: Option::from(String::from("Internal Server Error")),
-            user: None
-        })
-    }
-}
-
-#[get("/v1/users")]
-async fn users(db_pool: web::Data<MySqlPool>) -> impl Responder {
-    let q = User::get_all(db_pool.get_ref()).await;
-    match q {
-        Ok(users) => HttpResponse::Ok().json(UsersResponse { status: 200, error: None, users: Option::from(users)}),
-        _ => HttpResponse::InternalServerError().json(UsersResponse {
-            status: 500,
-            error: Option::from(String::from("Internal Server Error")),
-            users: None
-        })
-    }
-}
-
-#[get("/v1/random")]
-async fn random(params: web::Query<MemeFilterQuery>, db_pool: web::Data<MySqlPool>) -> impl Responder {
-    let q = Meme::get_random(params.0, db_pool.get_ref()).await;
-    match q {
-        Ok(random) => HttpResponse::Ok().json(MemeResponse {
-            status: 200,
-            error: None,
-            meme: Some(random)
-        }),
-        Err(err) => match err {
-            Error::RowNotFound => HttpResponse::NotFound().json(MemeResponse {
+            Error::RowNotFound => (StatusCode::NOT_FOUND, Json(MemeResponse {
                 status: 404,
                 error: Some(String::from("Meme not found")),
                 meme: None
-            }),
-            _ => HttpResponse::InternalServerError().json(MemeResponse {
+            })),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, Json(MemeResponse {
                 status: 500,
                 error: Some(String::from("Internal Server Error")),
                 meme: None
-            })
+            }))
         }
     }
 }
 
-//TODO: Implement random meme endpoint
+async fn memes(params: Query<MemeFilterQuery>, Extension(db_pool): Extension<MySqlPool>) -> impl IntoResponse {
+    let q = Meme::get_all(params.0, &db_pool).await;
+    match q {
+        Ok(memes) => (StatusCode::OK, Json(MemesResponse {
+            status: 200,
+            error: None,
+            memes: Some(memes)
+        })),
+        _ => (StatusCode::INTERNAL_SERVER_ERROR, Json(MemesResponse {
+            status: 500,
+            error: Some(String::from("Internal Server Error")),
+            memes: None
+        }))
+    }
+}
+
+async fn category(params: Query<IDQuery>, Extension(db_pool): Extension<MySqlPool>) -> impl IntoResponse {
+    let q = Category::get(&params.id, &db_pool).await;
+    match q {
+        Ok(category) => (StatusCode::OK, Json(CategoryResponse { status: 200, error: None, category: Some(category)})),
+        Err(err) => match err {
+            Error::RowNotFound => (StatusCode::NOT_FOUND, Json(CategoryResponse {
+                status: 404,
+                error: Some(String::from("Category not found")),
+                category: None
+            })),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, Json(CategoryResponse {
+                status: 500,
+                error: Some(String::from("Internal Server Error")),
+                category: None
+            }))
+        }
+    }
+}
+
+async fn categories(Extension(db_pool): Extension<MySqlPool>) -> impl IntoResponse {
+    let q = Category::get_all(&db_pool).await;
+    match q {
+        Ok(categories) => (StatusCode::OK, Json(CategoriesResponse { status: 200, error: None, categories: Some(categories)})),
+        _ => (StatusCode::INTERNAL_SERVER_ERROR, Json(CategoriesResponse {
+            status: 500,
+            error: Some(String::from("Internal Server Error")),
+            categories: None
+        }))
+    }
+}
+
+async fn user(params: Query<UserIDQuery>, Extension(db_pool): Extension<MySqlPool>) -> impl IntoResponse {
+    let q = User::get(params.0, &db_pool).await;
+    match q {
+        Ok(user) => (StatusCode::OK, Json(UserResponse { status: 200, error: None, user: Some(user)})),
+        _ => (StatusCode::INTERNAL_SERVER_ERROR, Json(UserResponse {
+            status: 500,
+            error: Some(String::from("Internal Server Error")),
+            user: None
+        }))
+    }
+}
+
+async fn users(Extension(db_pool): Extension<MySqlPool>) -> impl IntoResponse {
+    let q = User::get_all(&db_pool).await;
+    match q {
+        Ok(users) => (StatusCode::OK, Json(UsersResponse { status: 200, error: None, users: Some(users)})),
+        _ => (StatusCode::INTERNAL_SERVER_ERROR, Json(UsersResponse {
+            status: 500,
+            error: Some(String::from("Internal Server Error")),
+            users: None
+        }))
+    }
+}
+
+async fn random(params: Query<MemeFilterQuery>, Extension(db_pool): Extension<MySqlPool>) -> impl IntoResponse {
+    let q = Meme::get_random(params.0, &db_pool).await;
+    match q {
+        Ok(random) => (StatusCode::OK, Json(MemeResponse {
+            status: 200,
+            error: None,
+            meme: Some(random)
+        })),
+        Err(err) => match err {
+            Error::RowNotFound => (StatusCode::NOT_FOUND, Json(MemeResponse {
+                status: 404,
+                error: Some(String::from("Meme not found")),
+                meme: None
+            })),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, Json(MemeResponse {
+                status: 500,
+                error: Some(String::from("Internal Server Error")),
+                meme: None
+            }))
+        }
+    }
+}
+
 //TODO: Implement upload endpoint
 
-pub fn init(cfg: &mut web::ServiceConfig) {
-    cfg.service(meme);
-    cfg.service(memes);
-    cfg.service(category);
-    cfg.service(categories);
-    cfg.service(user);
-    cfg.service(users);
-    cfg.service(random);
+pub fn routes() -> Router<BoxRoute> {
+    Router::new()
+        .route("/meme", get(meme))
+        .route("/memes", get(memes))
+        .route("/category", get(category))
+        .route("/categories", get(categories))
+        .route("/user", get(user))
+        .route("/users", get(users))
+        .route("/random", get(random))
+        .boxed()
 }

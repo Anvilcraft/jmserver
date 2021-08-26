@@ -1,21 +1,25 @@
-use actix_web::{HttpServer, App};
 use std::{io, env};
 use sqlx::MySqlPool;
+use std::net::SocketAddr;
+use axum::Router;
+use tower_http::add_extension::AddExtensionLayer;
 
 mod v1;
 
-#[actix_web::main]
-async fn main() -> io::Result<()>{
+#[tokio::main]
+async fn main() {
 
     let database_url = env::var("DBURL").unwrap();
     let db_pool = MySqlPool::new(&database_url).await.unwrap();
 
-    let mut server = HttpServer::new(move || {
-        App::new()
-            .data(db_pool.clone())
-            .configure(v1::init)
-    });
+    let app = Router::new()
+        .nest("/v1", v1::routes())
+        .layer(AddExtensionLayer::new(db_pool));
 
-    server = server.bind(env::var("LISTEN").unwrap())?;
-    server.run().await
+    let addr: SocketAddr = env::var("LISTEN").expect("The LISTEN env var ist not set").parse().expect("The LISTEN env var is set incorrectly");
+
+    axum::Server::bind(&addr)
+        .serve(app.into_make_service())
+        .await
+        .expect("Something went wrong :(");
 }
