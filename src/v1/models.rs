@@ -7,6 +7,7 @@ pub struct Meme {
     pub category: String,
     pub user: String,
     pub timestamp: String,
+    pub ipfs: Option<String>,
 }
 
 #[derive(Serialize)]

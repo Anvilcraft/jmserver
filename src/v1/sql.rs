@@ -10,70 +10,73 @@ pub struct DBMeme {
     pub userdir: String,
     pub category: String,
     pub timestamp: i64,
+    pub ipfs: Option<String>,
 }
 
-
 impl Meme {
-    pub async fn get(id: i32, pool: &MySqlPool) -> Result<Meme> {
-        let q: Meme = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts FROM memes, users WHERE memes.user = users.id AND memes.id=?").bind(id)
-            .map(|row: MySqlRow| Meme::from(DBMeme {
+
+    pub fn new(meme: DBMeme, cdn: String) -> Self {
+        Meme {
+            id: meme.id.to_string(),
+            link: format!("{}/{}/{}", cdn, meme.userdir, meme.filename),
+            category: meme.category,
+            user: meme.user,
+            timestamp: meme.timestamp.to_string(),
+            ipfs: meme.ipfs,
+        }
+    }
+
+    pub async fn get(id: i32, pool: &MySqlPool, cdn: String) -> Result<Meme> {
+        let q: Meme = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND memes.id=?").bind(id)
+            .map(|row: MySqlRow| Meme::new(DBMeme {
                 id: row.get("id"),
                 filename: row.get("filename"),
                 user: row.get("name"),
                 userdir: row.get("user"),
                 category: row.get("category"),
                 timestamp: row.get("ts"),
-            }))
+                ipfs: row.get("cid"),
+            }, cdn.clone()))
             .fetch_one(pool).await?;
         Ok(q)
     }
 
-    pub async fn get_all(params: MemeFilterQuery, pool: &MySqlPool) -> Result<Vec<Meme>> {
-        let q: Vec<Meme> = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ?) ORDER BY memes.id")
+    pub async fn get_all(params: MemeFilterQuery, pool: &MySqlPool, cdn: String) -> Result<Vec<Meme>> {
+        let q: Vec<Meme> = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ?) ORDER BY memes.id")
             .bind(params.category.unwrap_or(String::from("%")))
             .bind(format!("%{}%", params.user.unwrap_or(String::from(""))))
             .bind(format!("%{}%", params.search.unwrap_or(String::from(""))))
-            .map(|row: MySqlRow| Meme::from(DBMeme {
+            .map(|row: MySqlRow| Meme::new(DBMeme {
                 id: row.get("id"),
                 filename: row.get("filename"),
                 user: row.get("name"),
                 userdir: row.get("user"),
                 category: row.get("category"),
                 timestamp: row.get("ts"),
-            }))
+                ipfs: row.get("cid"),
+            }, cdn.clone()))
             .fetch_all(pool).await?;
         Ok(q)
     }
 
-    pub async fn get_random(params: MemeFilterQuery, pool: &MySqlPool) -> Result<Meme> {
-        let q: Meme = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ?) ORDER BY RAND() LIMIT 1")
+    pub async fn get_random(params: MemeFilterQuery, pool: &MySqlPool, cdn: String) -> Result<Meme> {
+        let q: Meme = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ?) ORDER BY RAND() LIMIT 1")
             .bind(params.category.unwrap_or(String::from("%")))
             .bind(format!("%{}%", params.user.unwrap_or(String::from(""))))
             .bind(format!("%{}%", params.search.unwrap_or(String::from(""))))
-            .map(|row: MySqlRow| Meme::from(DBMeme {
+            .map(|row: MySqlRow| Meme::new(DBMeme {
                 id: row.get("id"),
                 filename: row.get("filename"),
                 user: row.get("name"),
                 userdir: row.get("user"),
                 category: row.get("category"),
                 timestamp: row.get("ts"),
-            }))
+                ipfs: row.get("cid"),
+            }, cdn.clone()))
             .fetch_one(pool).await?;
         Ok(q)
     }
 
-}
-
-impl From<DBMeme> for Meme {
-    fn from(meme: DBMeme) -> Self {
-        Meme {
-            id: meme.id.to_string(),
-            link: format!("{}/{}/{}", env::var("CDNURL").unwrap(), meme.userdir, meme.filename),
-            category: meme.category,
-            user: meme.user,
-            timestamp: meme.timestamp.to_string(),
-        }
-    }
 }
 
 impl Category {

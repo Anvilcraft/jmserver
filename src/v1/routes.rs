@@ -1,3 +1,4 @@
+use crate::config::ConfVars;
 use crate::v1::models::*;
 use sqlx::{MySqlPool, Error};
 use axum::{Router, Json};
@@ -7,8 +8,8 @@ use axum::handler::get;
 use axum::extract::{Query, Extension};
 use axum::http::StatusCode;
 
-async fn meme(params: Query<MemeIDQuery>, Extension(db_pool): Extension<MySqlPool>) -> impl IntoResponse {
-    let q = Meme::get(params.id, &db_pool).await;
+async fn meme(params: Query<MemeIDQuery>, Extension(db_pool): Extension<MySqlPool>, Extension(vars): Extension<ConfVars>) -> impl IntoResponse {
+    let q = Meme::get(params.id, &db_pool, vars.cdn).await;
     match q {
         Ok(meme) => (StatusCode::OK, Json(MemeResponse {
             status: 200,
@@ -30,8 +31,8 @@ async fn meme(params: Query<MemeIDQuery>, Extension(db_pool): Extension<MySqlPoo
     }
 }
 
-async fn memes(params: Query<MemeFilterQuery>, Extension(db_pool): Extension<MySqlPool>) -> impl IntoResponse {
-    let q = Meme::get_all(params.0, &db_pool).await;
+async fn memes(params: Query<MemeFilterQuery>, Extension(db_pool): Extension<MySqlPool>, Extension(vars): Extension<ConfVars>) -> impl IntoResponse {
+    let q = Meme::get_all(params.0, &db_pool, vars.cdn).await;
     match q {
         Ok(memes) => (StatusCode::OK, Json(MemesResponse {
             status: 200,
@@ -101,8 +102,8 @@ async fn users(Extension(db_pool): Extension<MySqlPool>) -> impl IntoResponse {
     }
 }
 
-async fn random(params: Query<MemeFilterQuery>, Extension(db_pool): Extension<MySqlPool>) -> impl IntoResponse {
-    let q = Meme::get_random(params.0, &db_pool).await;
+async fn random(params: Query<MemeFilterQuery>, Extension(db_pool): Extension<MySqlPool>, Extension(vars): Extension<ConfVars>) -> impl IntoResponse {
+    let q = Meme::get_random(params.0, &db_pool, vars.cdn).await;
     match q {
         Ok(random) => (StatusCode::OK, Json(MemeResponse {
             status: 200,
