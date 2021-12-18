@@ -1,4 +1,4 @@
-use std::{env, io, path::PathBuf};
+use std::path::PathBuf;
 use config::Config;
 use sqlx::MySqlPool;
 use structopt::StructOpt;
@@ -6,7 +6,9 @@ use axum::{Router, body::Body, http::{HeaderValue, Request, header}};
 use tower_http::{add_extension::AddExtensionLayer, set_header::SetResponseHeaderLayer};
 
 mod v1;
+mod cdn;
 mod config;
+mod ipfs;
 
 #[derive(StructOpt)]
 struct Opt {
@@ -29,7 +31,8 @@ async fn main() {
     let db_pool = MySqlPool::new(&config.database).await.expect("Database connection error");
 
     let app = Router::new()
-        .nest("/v1", v1::routes())
+        .nest("/api/v1", v1::routes())
+        .nest("/cdn", cdn::routes())
         .layer(AddExtensionLayer::new(db_pool))
         .layer(AddExtensionLayer::new(config.vars()))
         .layer(SetResponseHeaderLayer::<_, Request<Body>>::if_not_present(header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*")));

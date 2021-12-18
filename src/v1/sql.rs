@@ -1,7 +1,6 @@
 use crate::v1::models::{Meme, MemeFilterQuery, Category, User, UserIDQuery};
 use sqlx::{MySqlPool, Result, Row};
 use sqlx::mysql::MySqlRow;
-use std::env;
 
 pub struct DBMeme {
     pub id: i32,
@@ -16,7 +15,7 @@ pub struct DBMeme {
 impl Meme {
 
     pub fn new(meme: DBMeme, cdn: String) -> Self {
-        Meme {
+        Self {
             id: meme.id.to_string(),
             link: format!("{}/{}/{}", cdn, meme.userdir, meme.filename),
             category: meme.category,

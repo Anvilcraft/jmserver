@@ -17,3 +17,7 @@ sqlx = { version = "0.3", features = [ "mysql" ] }
 rand = "0.8.0"
 structopt = "0.3.22"
 toml = "0.5.8"
+reqwest = { version = "0.11", features = ["stream", "multipart"] }
+new_mime_guess = "3.0.2"
+headers = "0.3.5"
+url = {version = "2.2.2", features = ["serde"]}
