@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+</head>
+<body>
+    {% for entry in entries %}
+    <a href="{{prefix}}/{{entry}}{{suffix}}">{{entry}}</a><br>
+    {% endfor %}
+</body>
+</html>

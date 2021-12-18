@@ -6,10 +6,15 @@ use sqlx::{Error, MySqlPool};
 
 use crate::config::ConfVars;
 
+use self::templates::{DirTemplate, HtmlTemplate};
+
 mod sql;
+mod templates;
 
 pub fn routes() -> Router<BoxRoute> {
     Router::new()
+    .route("/", get(users))
+    .route("/:user/", get(memes))
     .route("/:user/:filename", get(image))
     .boxed()
 }
@@ -47,5 +52,29 @@ async fn image(Path((user, filename)): Path<(String, String)>, Extension(db_pool
             Error::RowNotFound => Err(StatusCode::NOT_FOUND),
             _ => Err(StatusCode::INTERNAL_SERVER_ERROR),
         },
+    }
+}
+
+async fn users(Extension(db_pool): Extension<MySqlPool>, Extension(vars): Extension<ConfVars>) -> Result<impl IntoResponse, StatusCode> {
+    let q = sql::get_users(&db_pool).await;
+    match q {
+        Ok(users) => Ok(HtmlTemplate(DirTemplate { 
+            entries: users,
+            prefix: vars.cdn,
+            suffix: "/".to_string(),
+        })),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+async fn memes(Path(user): Path<String>, Extension(db_pool): Extension<MySqlPool>) -> Result<impl IntoResponse, StatusCode> {
+    let q = sql::get_memes(user, &db_pool).await;
+    match q {
+        Ok(memes) => Ok(HtmlTemplate(DirTemplate { 
+            entries: memes,
+            prefix: ".".to_string(),
+            suffix: "".to_string(),
+        })),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
     }
 }
