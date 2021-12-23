@@ -8,7 +8,7 @@ edition = "2018"
 
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }
-axum = { version = "0.2.8", features = ["headers"] }
+axum = { version = "0.2.8", features = ["headers", "multipart"] }
 tower = { version = "0.4", features = ["util", "timeout"] }
 tower-http = { version = "0.1", features = ["add-extension", "trace", "fs", "set-header"] }
 serde = { version = "1.0", features = ["derive"] }
@@ -17,8 +17,9 @@ sqlx = { version = "0.3", features = [ "mysql" ] }
 rand = "0.8.0"
 structopt = "0.3.22"
 toml = "0.5.8"
-reqwest = { version = "0.11", features = ["stream", "multipart"] }
+reqwest = { version = "0.11", features = ["stream", "multipart", "json"] }
 new_mime_guess = "3.0.2"
 headers = "0.3.5"
 url = {version = "2.2.2", features = ["serde"]}
 askama = "0.10"
+urlencoding = "2.1.0"

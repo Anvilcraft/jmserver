@@ -20,6 +20,7 @@ pub fn routes() -> Router<BoxRoute> {
 }
 
 async fn image(Path((user, filename)): Path<(String, String)>, Extension(db_pool): Extension<MySqlPool>, Extension(vars): Extension<ConfVars>) -> Result<impl IntoResponse, StatusCode> {
+    let filename = urlencoding::decode(&filename).map_err(|err| StatusCode::INTERNAL_SERVER_ERROR)?.into_owned();
     let q = sql::get_cid(user, filename.clone(), &db_pool).await;
     match q {
         Ok(cid) => {
