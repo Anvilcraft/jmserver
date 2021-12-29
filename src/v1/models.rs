@@ -1,4 +1,12 @@
-use serde::{Deserialize, Serialize};
+use reqwest::StatusCode;
+use serde::{Deserialize, Serialize, Serializer};
+
+fn serialize_status<S>(x: &StatusCode, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    s.serialize_u16(x.as_u16())
+}
 
 #[derive(Serialize)]
 pub struct Meme {
@@ -7,7 +15,7 @@ pub struct Meme {
     pub category: String,
     pub user: String,
     pub timestamp: String,
-    pub ipfs: Option<String>,
+    pub ipfs: String,
 }
 
 #[derive(Serialize)]
@@ -73,7 +81,14 @@ pub struct UserResponse {
 pub struct UploadResponse {
     pub status: i32,
     pub error: Option<String>,
-    pub files: Option<Vec<String>>
+    pub files: Option<Vec<String>>,
+}
+
+#[derive(Serialize)]
+pub struct ErrorResponse {
+    #[serde(serialize_with = "serialize_status")]
+    pub status: StatusCode,
+    pub error: Option<String>,
 }
 
 //Query
@@ -101,5 +116,3 @@ pub struct MemeFilterQuery {
     pub user: Option<String>,
     pub search: Option<String>,
 }
-
-

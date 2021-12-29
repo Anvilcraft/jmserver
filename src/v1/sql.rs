@@ -1,6 +1,6 @@
-use crate::v1::models::{Meme, MemeFilterQuery, Category, User, UserIDQuery};
-use sqlx::{MySqlPool, Result, Row};
+use crate::v1::models::{Category, Meme, MemeFilterQuery, User, UserIDQuery};
 use sqlx::mysql::MySqlRow;
+use sqlx::{MySqlPool, Result, Row};
 
 pub struct DBMeme {
     pub id: i32,
@@ -9,11 +9,10 @@ pub struct DBMeme {
     pub userdir: String,
     pub category: String,
     pub timestamp: i64,
-    pub ipfs: Option<String>,
+    pub ipfs: String,
 }
 
 impl Meme {
-
     pub fn new(meme: DBMeme, cdn: String) -> Self {
         Self {
             id: meme.id.to_string(),
@@ -40,7 +39,11 @@ impl Meme {
         Ok(q)
     }
 
-    pub async fn get_all(params: MemeFilterQuery, pool: &MySqlPool, cdn: String) -> Result<Vec<Meme>> {
+    pub async fn get_all(
+        params: MemeFilterQuery,
+        pool: &MySqlPool,
+        cdn: String,
+    ) -> Result<Vec<Meme>> {
         let q: Vec<Meme> = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ?) ORDER BY memes.id")
             .bind(params.category.unwrap_or(String::from("%")))
             .bind(format!("%{}%", params.user.unwrap_or(String::from(""))))
@@ -58,7 +61,11 @@ impl Meme {
         Ok(q)
     }
 
-    pub async fn get_random(params: MemeFilterQuery, pool: &MySqlPool, cdn: String) -> Result<Meme> {
+    pub async fn get_random(
+        params: MemeFilterQuery,
+        pool: &MySqlPool,
+        cdn: String,
+    ) -> Result<Meme> {
         let q: Meme = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ?) ORDER BY RAND() LIMIT 1")
             .bind(params.category.unwrap_or(String::from("%")))
             .bind(format!("%{}%", params.user.unwrap_or(String::from(""))))
@@ -75,17 +82,18 @@ impl Meme {
             .fetch_one(pool).await?;
         Ok(q)
     }
-
 }
 
 impl Category {
     pub async fn get(id: &String, pool: &MySqlPool) -> Result<Category> {
-        let q: Category = sqlx::query("SELECT * FROM categories WHERE id=?").bind(id)
+        let q: Category = sqlx::query("SELECT * FROM categories WHERE id=?")
+            .bind(id)
             .map(|row: MySqlRow| Category {
                 id: row.get("id"),
                 name: row.get("name"),
             })
-            .fetch_one(pool).await?;
+            .fetch_one(pool)
+            .await?;
         Ok(q)
     }
 
@@ -95,13 +103,13 @@ impl Category {
                 id: row.get("id"),
                 name: row.get("name"),
             })
-            .fetch_all(pool).await?;
+            .fetch_all(pool)
+            .await?;
         Ok(q)
     }
 }
 
 impl User {
-
     pub async fn get(params: UserIDQuery, pool: &MySqlPool) -> Result<User> {
         let q: User = sqlx::query("SELECT id, name, MD5(token) AS hash, uploads FROM (SELECT id, name, IFNULL(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT user, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (user)) AS count ON users.id = count.user) AS users, token WHERE users.id = token.uid AND (users.id LIKE ? OR token LIKE ? OR name LIKE ?) UNION SELECT id, name, 0 AS hash, 0 AS uploads FROM users WHERE id = '000'")
             .bind(params.id.unwrap_or(String::from("")))
@@ -117,7 +125,7 @@ impl User {
             .fetch_one(pool).await?;
         Ok(q)
     }
-    
+
     pub async fn get_all(pool: &MySqlPool) -> Result<Vec<User>> {
         let q: Vec<User> = sqlx::query("SELECT id, name, MD5(token) AS hash, uploads FROM (SELECT id, name, IFNULL(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT user, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (user)) AS count ON users.id = count.user) AS users, token WHERE users.id = token.uid UNION SELECT id, name, 0 AS hash, 0 AS uploads FROM users WHERE id = '000'")
             .map(|row: MySqlRow| User {
@@ -130,5 +138,4 @@ impl User {
             .fetch_all(pool).await?;
         Ok(q)
     }
-    
 }

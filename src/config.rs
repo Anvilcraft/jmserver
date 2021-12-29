@@ -1,6 +1,6 @@
-use std::net::SocketAddr;
 use reqwest::Url;
 use serde::Deserialize;
+use std::net::SocketAddr;
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -16,18 +16,19 @@ pub struct ConfVars {
 }
 
 impl Config {
-
     pub fn vars(&self) -> ConfVars {
         ConfVars {
             cdn: self.cdn.clone(),
             ipfs_api: self.ipfs_api.clone(),
         }
     }
-
 }
 
 impl Clone for ConfVars {
     fn clone(&self) -> Self {
-        Self { cdn: self.cdn.clone(), ipfs_api: self.ipfs_api.clone() }
+        Self {
+            cdn: self.cdn.clone(),
+            ipfs_api: self.ipfs_api.clone(),
+        }
     }
 }
