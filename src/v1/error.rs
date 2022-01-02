@@ -2,43 +2,50 @@ use std::convert::Infallible;
 
 use axum::{
     body::{Bytes, Full},
+    extract::multipart::MultipartError,
     response::IntoResponse,
     Json,
 };
 use reqwest::StatusCode;
+use thiserror::Error;
 
 use super::models::ErrorResponse;
 
+#[derive(Error, Debug)]
+pub enum APIError {
+    #[error("SQL error: {0}")]
+    Sql(#[from] sqlx::Error),
+    #[error("Multipart form error: {0}")]
+    Multipart(#[from] MultipartError),
+    #[error("Bad request: {0}")]
+    BadRequest(String),
+}
+
 impl ErrorResponse {
     fn new(status: StatusCode, message: Option<String>) -> Self {
-        ErrorResponse {
+        let reason = status.canonical_reason().unwrap_or_default();
+        Self {
             status,
-            error: message,
+            error: message.unwrap_or(reason.to_string()),
         }
     }
 }
 
-impl IntoResponse for ErrorResponse {
+impl IntoResponse for APIError {
     type Body = Full<Bytes>;
 
     type BodyError = Infallible;
 
     fn into_response(self) -> axum::http::Response<Self::Body> {
-        let status = self.status.clone();
-        (status, Json(self)).into_response()
-    }
-}
-
-impl From<sqlx::Error> for ErrorResponse {
-    fn from(err: sqlx::Error) -> Self {
-        match err {
-            sqlx::Error::RowNotFound => {
-                Self::new(StatusCode::NOT_FOUND, Some("Not found".to_string()))
-            }
-            _ => Self::new(
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Some("Internal Server Error".to_string()),
-            ),
-        }
+        let res = match self {
+            APIError::Sql(err) => match err {
+                sqlx::Error::RowNotFound => ErrorResponse::new(StatusCode::NOT_FOUND, None),
+                _ => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, None),
+            },
+            APIError::Multipart(_) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, None),
+            APIError::BadRequest(err) => ErrorResponse::new(StatusCode::BAD_REQUEST, Some(err)),
+        };
+        let status = res.status.clone();
+        (status, Json(res)).into_response()
     }
 }

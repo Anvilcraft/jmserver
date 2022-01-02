@@ -88,7 +88,7 @@ pub struct UploadResponse {
 pub struct ErrorResponse {
     #[serde(serialize_with = "serialize_status")]
     pub status: StatusCode,
-    pub error: Option<String>,
+    pub error: String,
 }
 
 //Query

@@ -1,4 +1,5 @@
 use crate::config::ConfVars;
+use crate::ipfs::IPFSFile;
 use crate::v1::models::*;
 use axum::extract::{ContentLengthLimit, Extension, Multipart, Query};
 use axum::handler::{get, post};
@@ -7,11 +8,13 @@ use axum::routing::BoxRoute;
 use axum::{Json, Router};
 use sqlx::MySqlPool;
 
+use super::error::APIError;
+
 async fn meme(
     params: Query<MemeIDQuery>,
     Extension(db_pool): Extension<MySqlPool>,
     Extension(vars): Extension<ConfVars>,
-) -> Result<impl IntoResponse, ErrorResponse> {
+) -> Result<impl IntoResponse, APIError> {
     let meme = Meme::get(params.id, &db_pool, vars.cdn).await?;
     Ok(Json(MemeResponse {
         status: 200,
@@ -24,7 +27,7 @@ async fn memes(
     params: Query<MemeFilterQuery>,
     Extension(db_pool): Extension<MySqlPool>,
     Extension(vars): Extension<ConfVars>,
-) -> Result<impl IntoResponse, ErrorResponse> {
+) -> Result<impl IntoResponse, APIError> {
     let memes = Meme::get_all(params.0, &db_pool, vars.cdn).await?;
     Ok(Json(MemesResponse {
         status: 200,
@@ -36,7 +39,7 @@ async fn memes(
 async fn category(
     params: Query<IDQuery>,
     Extension(db_pool): Extension<MySqlPool>,
-) -> Result<impl IntoResponse, ErrorResponse> {
+) -> Result<impl IntoResponse, APIError> {
     let category = Category::get(&params.id, &db_pool).await?;
     Ok(Json(CategoryResponse {
         status: 200,
@@ -47,7 +50,7 @@ async fn category(
 
 async fn categories(
     Extension(db_pool): Extension<MySqlPool>,
-) -> Result<impl IntoResponse, ErrorResponse> {
+) -> Result<impl IntoResponse, APIError> {
     let categories = Category::get_all(&db_pool).await?;
     Ok(Json(CategoriesResponse {
         status: 200,
@@ -59,7 +62,7 @@ async fn categories(
 async fn user(
     params: Query<UserIDQuery>,
     Extension(db_pool): Extension<MySqlPool>,
-) -> Result<impl IntoResponse, ErrorResponse> {
+) -> Result<impl IntoResponse, APIError> {
     let user = User::get(params.0, &db_pool).await?;
     Ok(Json(UserResponse {
         status: 200,
@@ -68,9 +71,7 @@ async fn user(
     }))
 }
 
-async fn users(
-    Extension(db_pool): Extension<MySqlPool>,
-) -> Result<impl IntoResponse, ErrorResponse> {
+async fn users(Extension(db_pool): Extension<MySqlPool>) -> Result<impl IntoResponse, APIError> {
     let users = User::get_all(&db_pool).await?;
     Ok(Json(UsersResponse {
         status: 200,
@@ -83,7 +84,7 @@ async fn random(
     params: Query<MemeFilterQuery>,
     Extension(db_pool): Extension<MySqlPool>,
     Extension(vars): Extension<ConfVars>,
-) -> Result<impl IntoResponse, ErrorResponse> {
+) -> Result<impl IntoResponse, APIError> {
     let random = Meme::get_random(params.0, &db_pool, vars.cdn).await?;
     Ok(Json(MemeResponse {
         status: 200,
@@ -96,8 +97,8 @@ async fn upload(
     ContentLengthLimit(mut form): ContentLengthLimit<Multipart, { 1024 * 1024 * 1024 }>,
     Extension(db_pool): Extension<MySqlPool>,
     Extension(vars): Extension<ConfVars>,
-) -> impl IntoResponse {
-    todo!();
+) -> Result<impl IntoResponse, APIError> {
+    Ok(())
 }
 
 //TODO: Implement upload endpoint
