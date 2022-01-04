@@ -4,6 +4,7 @@ use axum::{
     Router,
 };
 use config::Config;
+use error::JMError;
 use sqlx::MySqlPool;
 use std::path::PathBuf;
 use structopt::StructOpt;
@@ -13,6 +14,7 @@ mod cdn;
 mod config;
 mod ipfs;
 mod v1;
+mod error;
 
 #[derive(StructOpt)]
 struct Opt {
@@ -26,14 +28,13 @@ struct Opt {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<(), JMError> {
     let opt = Opt::from_args();
-    let config = std::fs::read(&opt.config).expect("Config file reading error");
-    let config = toml::from_slice::<Config>(&config).expect("Config file parsing error");
+    let config = std::fs::read(&opt.config)?;
+    let config = toml::from_slice::<Config>(&config)?;
 
     let db_pool = MySqlPool::new(&config.database)
-        .await
-        .expect("Database connection error");
+        .await?;
 
     let app = Router::new()
         .nest("/api/v1", v1::routes())
@@ -47,6 +48,7 @@ async fn main() {
 
     axum::Server::bind(&config.addr)
         .serve(app.into_make_service())
-        .await
-        .expect("Something went wrong :(");
+        .await?;
+
+    Ok(())
 }

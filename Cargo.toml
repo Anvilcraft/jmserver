@@ -9,6 +9,7 @@ edition = "2018"
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }
 axum = { version = "0.2.8", features = ["headers", "multipart"] }
+hyper = "0.14.16"
 tower = { version = "0.4", features = ["util", "timeout"] }
 tower-http = { version = "0.1", features = ["add-extension", "trace", "fs", "set-header"] }
 serde = { version = "1.0", features = ["derive"] }
