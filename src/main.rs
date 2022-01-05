@@ -12,9 +12,9 @@ use tower_http::{add_extension::AddExtensionLayer, set_header::SetResponseHeader
 
 mod cdn;
 mod config;
+mod error;
 mod ipfs;
 mod v1;
-mod error;
 
 #[derive(StructOpt)]
 struct Opt {
@@ -33,8 +33,7 @@ async fn main() -> Result<(), JMError> {
     let config = std::fs::read(&opt.config)?;
     let config = toml::from_slice::<Config>(&config)?;
 
-    let db_pool = MySqlPool::new(&config.database)
-        .await?;
+    let db_pool = MySqlPool::new(&config.database).await?;
 
     let app = Router::new()
         .nest("/api/v1", v1::routes())

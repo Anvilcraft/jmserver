@@ -10,6 +10,7 @@ use reqwest::StatusCode;
 use thiserror::Error;
 
 use super::models::ErrorResponse;
+use crate::ipfs::error::IPFSError;
 
 #[derive(Error, Debug)]
 pub enum APIError {
@@ -19,6 +20,8 @@ pub enum APIError {
     Multipart(#[from] MultipartError),
     #[error("Bad request: {0}")]
     BadRequest(String),
+    #[error("IPFS error: {0}")]
+    IPFS(#[from] IPFSError),
 }
 
 impl ErrorResponse {
@@ -44,6 +47,7 @@ impl IntoResponse for APIError {
             },
             APIError::Multipart(_) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, None),
             APIError::BadRequest(err) => ErrorResponse::new(StatusCode::BAD_REQUEST, Some(err)),
+            APIError::IPFS(_) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, None),
         };
         let status = res.status.clone();
         (status, Json(res)).into_response()
