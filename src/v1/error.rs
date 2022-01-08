@@ -24,6 +24,8 @@ pub enum APIError {
     Unauthorized(String),
     #[error("{0}")]
     Forbidden(String),
+    #[error("{0}")]
+    Internal(String),
     #[error("IPFS error: {0}")]
     IPFS(#[from] IPFSError),
 }
@@ -53,6 +55,9 @@ impl IntoResponse for APIError {
             APIError::BadRequest(err) => ErrorResponse::new(StatusCode::BAD_REQUEST, Some(err)),
             APIError::Unauthorized(err) => ErrorResponse::new(StatusCode::UNAUTHORIZED, Some(err)),
             APIError::Forbidden(err) => ErrorResponse::new(StatusCode::FORBIDDEN, Some(err)),
+            APIError::Internal(err) => {
+                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, Some(err))
+            }
             APIError::IPFS(_) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, None),
         };
         let status = res.status.clone();

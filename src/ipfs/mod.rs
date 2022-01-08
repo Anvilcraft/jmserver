@@ -1,9 +1,9 @@
 use std::time::Duration;
 
-use axum::{body::Bytes, http::request};
+use axum::body::Bytes;
 use reqwest::{
     multipart::{Form, Part},
-    Body, Client, Response, Url,
+    Client, Response, Url,
 };
 use serde::{Deserialize, Serialize};
 
@@ -69,7 +69,7 @@ impl IpfsClient {
             .post(self.url.join("/api/v0/pin/add")?)
             .query(&PinQuery::new(cid))
             .timeout(Duration::from_secs(60));
-        let response = request.send().await?;
+        request.send().await?;
         Ok(())
     }
 }
