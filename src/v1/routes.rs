@@ -1,11 +1,14 @@
 use crate::config::ConfVars;
 use crate::ipfs::IPFSFile;
+use crate::lib::ExtractIP;
 use crate::v1::models::*;
+
 use axum::extract::{ContentLengthLimit, Extension, Multipart, Query};
 use axum::handler::{get, post};
 use axum::response::IntoResponse;
 use axum::routing::BoxRoute;
 use axum::{Json, Router};
+use hyper::StatusCode;
 use sqlx::MySqlPool;
 
 use super::error::APIError;
@@ -97,8 +100,70 @@ async fn upload(
     ContentLengthLimit(mut form): ContentLengthLimit<Multipart, { 1024 * 1024 * 1024 }>,
     Extension(db_pool): Extension<MySqlPool>,
     Extension(vars): Extension<ConfVars>,
+    ExtractIP(ip): ExtractIP,
 ) -> Result<impl IntoResponse, APIError> {
-    Ok(())
+    let mut category: Option<String> = None;
+    let mut token: Option<String> = None;
+    let mut files: Vec<IPFSFile> = vec![];
+
+    let ipfs = vars.ipfs_client()?;
+
+    while let Some(field) = form.next_field().await? {
+        match field.name().ok_or(APIError::BadRequest(
+            "A multipart-form field is missing a name".to_string(),
+        ))? {
+            "token" => token = Some(field.text().await?),
+            "category" => category = Some(field.text().await?),
+            "file" | "file[]" => {
+                let filename = field
+                    .file_name()
+                    .ok_or(APIError::BadRequest(
+                        "A file field has no filename".to_string(),
+                    ))?
+                    .to_string();
+                let file = ipfs.add(field.bytes().await?, filename).await?;
+                files.push(file);
+            }
+            _ => (),
+        }
+    }
+
+    let token = token.ok_or(APIError::Unauthorized("Missing token".to_string()))?;
+    let category = category.ok_or(APIError::BadRequest("Missing category".to_string()))?;
+    let user = User::check_token(token, &db_pool)
+        .await?
+        .ok_or(APIError::Forbidden("token not existing".to_string()))?;
+    let total = (user.dayuploads as isize) + (files.len() as isize);
+
+    if total > 20 {
+        return Err(APIError::Forbidden("Upload limit reached".to_string()));
+    }
+
+    let cat = Category::get(&category, &db_pool).await?;
+
+    let ip = ip.to_string();
+
+    let mut links: Vec<String> = vec![];
+
+    for f in files {
+        let res = cat.add_meme(&user, &f, &ip, &db_pool).await?;
+        ipfs.pin(f.hash).await?;
+        links.push(format!(
+            "{}/{}/{}",
+            vars.cdn,
+            user.id.clone(),
+            f.name.clone()
+        ));
+    }
+
+    Ok((
+        StatusCode::CREATED,
+        Json(UploadResponse {
+            status: 201,
+            error: None,
+            files: Some(links),
+        }),
+    ))
 }
 
 //TODO: Implement upload endpoint

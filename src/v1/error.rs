@@ -18,8 +18,12 @@ pub enum APIError {
     Sql(#[from] sqlx::Error),
     #[error("Multipart form error: {0}")]
     Multipart(#[from] MultipartError),
-    #[error("Bad request: {0}")]
+    #[error("{0}")]
     BadRequest(String),
+    #[error("{0}")]
+    Unauthorized(String),
+    #[error("{0}")]
+    Forbidden(String),
     #[error("IPFS error: {0}")]
     IPFS(#[from] IPFSError),
 }
@@ -47,6 +51,8 @@ impl IntoResponse for APIError {
             },
             APIError::Multipart(_) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, None),
             APIError::BadRequest(err) => ErrorResponse::new(StatusCode::BAD_REQUEST, Some(err)),
+            APIError::Unauthorized(err) => ErrorResponse::new(StatusCode::UNAUTHORIZED, Some(err)),
+            APIError::Forbidden(err) => ErrorResponse::new(StatusCode::FORBIDDEN, Some(err)),
             APIError::IPFS(_) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, None),
         };
         let status = res.status.clone();
