@@ -14,6 +14,7 @@ mod cdn;
 mod config;
 mod error;
 mod ipfs;
+mod lib;
 mod v1;
 
 #[derive(StructOpt)]

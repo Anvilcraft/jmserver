@@ -25,3 +25,4 @@ url = {version = "2.2.2", features = ["serde"]}
 askama = "0.10"
 urlencoding = "2.1.0"
 thiserror = "1.0.30"
+async-trait = "0.1.51"
