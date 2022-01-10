@@ -82,6 +82,7 @@ pub struct UploadResponse {
     pub status: i32,
     pub error: Option<String>,
     pub files: Option<Vec<String>>,
+    pub token: String,
 }
 
 #[derive(Serialize)]

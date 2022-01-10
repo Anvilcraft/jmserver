@@ -130,7 +130,7 @@ async fn upload(
 
     let token = token.ok_or_else(|| APIError::Unauthorized("Missing token".to_string()))?;
     let category = category.ok_or_else(|| APIError::BadRequest("Missing category".to_string()))?;
-    let user = User::check_token(token, &db_pool)
+    let user = User::check_token(&token, &db_pool)
         .await?
         .ok_or_else(|| APIError::Forbidden("token not existing".to_string()))?;
     let total = (user.dayuploads as isize) + (files.len() as isize);
@@ -167,11 +167,10 @@ async fn upload(
             status: 201,
             error: None,
             files: Some(links),
+            token,
         }),
     ))
 }
-
-//TODO: Implement upload endpoint
 
 pub fn routes() -> Router<BoxRoute> {
     Router::new()

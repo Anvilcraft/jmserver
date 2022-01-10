@@ -157,7 +157,7 @@ impl User {
         Ok(q)
     }
 
-    pub async fn check_token(token: String, pool: &MySqlPool) -> Result<Option<Self>> {
+    pub async fn check_token(token: &String, pool: &MySqlPool) -> Result<Option<Self>> {
         let q: Option<User> = sqlx::query("SELECT id, name, MD5(token) AS hash, uploads FROM (SELECT id, name, IFNULL(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT user, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (user)) AS count ON users.id = count.user) AS users, token WHERE users.id = token.uid AND token = ?")
         .bind(token)
         .map(|row: MySqlRow| Self {
