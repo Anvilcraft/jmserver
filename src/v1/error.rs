@@ -27,7 +27,7 @@ pub enum APIError {
     #[error("{0}")]
     Internal(String),
     #[error("IPFS error: {0}")]
-    IPFS(#[from] IPFSError),
+    Ipfs(#[from] IPFSError),
 }
 
 impl ErrorResponse {
@@ -35,7 +35,7 @@ impl ErrorResponse {
         let reason = status.canonical_reason().unwrap_or_default();
         Self {
             status,
-            error: message.unwrap_or(reason.to_string()),
+            error: message.unwrap_or_else(|| reason.to_string()),
         }
     }
 }
@@ -58,9 +58,9 @@ impl IntoResponse for APIError {
             APIError::Internal(err) => {
                 ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, Some(err))
             }
-            APIError::IPFS(_) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, None),
+            APIError::Ipfs(_) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, None),
         };
-        let status = res.status.clone();
+        let status = res.status;
         (status, Json(res)).into_response()
     }
 }

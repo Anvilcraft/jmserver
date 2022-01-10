@@ -46,9 +46,9 @@ impl Meme {
         cdn: String,
     ) -> Result<Vec<Self>> {
         let q: Vec<Meme> = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ?) ORDER BY memes.id")
-            .bind(params.category.unwrap_or(String::from("%")))
-            .bind(format!("%{}%", params.user.unwrap_or(String::from(""))))
-            .bind(format!("%{}%", params.search.unwrap_or(String::from(""))))
+            .bind(params.category.unwrap_or_else(|| String::from("%")))
+            .bind(format!("%{}%", params.user.unwrap_or_else(String::new)))
+            .bind(format!("%{}%", params.search.unwrap_or_else(String::new)))
             .map(|row: MySqlRow| Self::new(DBMeme {
                 id: row.get("id"),
                 filename: row.get("filename"),
@@ -68,9 +68,9 @@ impl Meme {
         cdn: String,
     ) -> Result<Self> {
         let q: Meme = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ?) ORDER BY RAND() LIMIT 1")
-            .bind(params.category.unwrap_or(String::from("%")))
-            .bind(format!("%{}%", params.user.unwrap_or(String::from(""))))
-            .bind(format!("%{}%", params.search.unwrap_or(String::from(""))))
+            .bind(params.category.unwrap_or_else(|| String::from("%")))
+            .bind(format!("%{}%", params.user.unwrap_or_else(String::new)))
+            .bind(format!("%{}%", params.search.unwrap_or_else(String::new)))
             .map(|row: MySqlRow| Self::new(DBMeme {
                 id: row.get("id"),
                 filename: row.get("filename"),
@@ -130,9 +130,9 @@ impl Category {
 impl User {
     pub async fn get(params: UserIDQuery, pool: &MySqlPool) -> Result<Self> {
         let q: User = sqlx::query("SELECT id, name, MD5(token) AS hash, uploads FROM (SELECT id, name, IFNULL(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT user, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (user)) AS count ON users.id = count.user) AS users, token WHERE users.id = token.uid AND (users.id LIKE ? OR token LIKE ? OR name LIKE ?) UNION SELECT id, name, 0 AS hash, 0 AS uploads FROM users WHERE id = '000'")
-            .bind(params.id.unwrap_or(String::from("")))
-            .bind(params.token.unwrap_or(String::from("")))
-            .bind(params.name.unwrap_or(String::from("")))
+            .bind(params.id.unwrap_or_else(String::new))
+            .bind(params.token.unwrap_or_else(String::new))
+            .bind(params.name.unwrap_or_else(String::new))
             .map(|row: MySqlRow| Self {
                 id: row.get("id"),
                 name: row.get("name"),

@@ -18,7 +18,8 @@ where
         let header = req
             .headers()
             .and_then(|headers| headers.get("x-forwarded-for"));
-        let header = header.ok_or(ExtractError::HeaderMissing("X-Forwarded-For".to_string()))?;
+        let header =
+            header.ok_or_else(|| ExtractError::HeaderMissing("X-Forwarded-For".to_string()))?;
         let mut value = header.to_str()?;
         let pos = value.chars().position(|r| r == ',');
         value = match pos {

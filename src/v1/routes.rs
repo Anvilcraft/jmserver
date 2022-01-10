@@ -109,17 +109,17 @@ async fn upload(
     let ipfs = vars.ipfs_client()?;
 
     while let Some(field) = form.next_field().await? {
-        match field.name().ok_or(APIError::BadRequest(
-            "A multipart-form field is missing a name".to_string(),
-        ))? {
+        match field.name().ok_or_else(|| {
+            APIError::BadRequest("A multipart-form field is missing a name".to_string())
+        })? {
             "token" => token = Some(field.text().await?),
             "category" => category = Some(field.text().await?),
             "file" | "file[]" => {
                 let filename = field
                     .file_name()
-                    .ok_or(APIError::BadRequest(
-                        "A file field has no filename".to_string(),
-                    ))?
+                    .ok_or_else(|| {
+                        APIError::BadRequest("A file field has no filename".to_string())
+                    })?
                     .to_string();
                 let file = ipfs.add(field.bytes().await?, filename).await?;
                 files.push(file);
@@ -128,11 +128,11 @@ async fn upload(
         }
     }
 
-    let token = token.ok_or(APIError::Unauthorized("Missing token".to_string()))?;
-    let category = category.ok_or(APIError::BadRequest("Missing category".to_string()))?;
+    let token = token.ok_or_else(|| APIError::Unauthorized("Missing token".to_string()))?;
+    let category = category.ok_or_else(|| APIError::BadRequest("Missing category".to_string()))?;
     let user = User::check_token(token, &db_pool)
         .await?
-        .ok_or(APIError::Forbidden("token not existing".to_string()))?;
+        .ok_or_else(|| APIError::Forbidden("token not existing".to_string()))?;
     let total = (user.dayuploads as isize) + (files.len() as isize);
 
     if total > 20 {

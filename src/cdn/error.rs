@@ -12,9 +12,9 @@ use crate::ipfs::error::IPFSError;
 #[derive(Error, Debug)]
 pub enum CDNError {
     #[error("SQL error: {0}")]
-    SQL(#[from] sqlx::Error),
+    Sql(#[from] sqlx::Error),
     #[error("IPFS error: {0}")]
-    IPFS(#[from] IPFSError),
+    Ipfs(#[from] IPFSError),
     #[error("Decode error: {0}")]
     Decode(#[from] FromUtf8Error),
     #[error("Internal server error")]
@@ -28,10 +28,7 @@ impl IntoResponse for CDNError {
 
     fn into_response(self) -> axum::http::Response<Self::Body> {
         let status = match self {
-            CDNError::SQL(err) => match err {
-                sqlx::Error::RowNotFound => StatusCode::NOT_FOUND,
-                _ => StatusCode::INTERNAL_SERVER_ERROR,
-            },
+            CDNError::Sql(sqlx::Error::RowNotFound) => StatusCode::NOT_FOUND,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
         status.into_response()
