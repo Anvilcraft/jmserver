@@ -3,7 +3,7 @@ use crate::ipfs::IPFSFile;
 use crate::lib::ExtractIP;
 use crate::v1::models::*;
 
-use axum::extract::{ContentLengthLimit, Extension, Multipart, Query};
+use axum::extract::{ContentLengthLimit, Extension, Multipart};
 use axum::handler::{get, post};
 use axum::response::IntoResponse;
 use axum::routing::BoxRoute;
@@ -12,9 +12,10 @@ use hyper::StatusCode;
 use sqlx::MySqlPool;
 
 use super::error::APIError;
+use super::Query;
 
 async fn meme(
-    params: Query<MemeIDQuery>,
+    Query(params): Query<MemeIDQuery>,
     Extension(db_pool): Extension<MySqlPool>,
     Extension(vars): Extension<ConfVars>,
 ) -> Result<impl IntoResponse, APIError> {
@@ -27,11 +28,11 @@ async fn meme(
 }
 
 async fn memes(
-    params: Query<MemeFilterQuery>,
+    Query(params): Query<MemeFilterQuery>,
     Extension(db_pool): Extension<MySqlPool>,
     Extension(vars): Extension<ConfVars>,
 ) -> Result<impl IntoResponse, APIError> {
-    let memes = Meme::get_all(params.0, &db_pool, vars.cdn).await?;
+    let memes = Meme::get_all(params, &db_pool, vars.cdn).await?;
     Ok(Json(MemesResponse {
         status: 200,
         error: None,
@@ -40,7 +41,7 @@ async fn memes(
 }
 
 async fn category(
-    params: Query<IDQuery>,
+    Query(params): Query<IDQuery>,
     Extension(db_pool): Extension<MySqlPool>,
 ) -> Result<impl IntoResponse, APIError> {
     let category = Category::get(&params.id, &db_pool).await?;
@@ -63,10 +64,10 @@ async fn categories(
 }
 
 async fn user(
-    params: Query<UserIDQuery>,
+    Query(params): Query<UserIDQuery>,
     Extension(db_pool): Extension<MySqlPool>,
 ) -> Result<impl IntoResponse, APIError> {
-    let user = User::get(params.0, &db_pool).await?;
+    let user = User::get(params, &db_pool).await?;
     Ok(Json(UserResponse {
         status: 200,
         error: None,
@@ -84,11 +85,11 @@ async fn users(Extension(db_pool): Extension<MySqlPool>) -> Result<impl IntoResp
 }
 
 async fn random(
-    params: Query<MemeFilterQuery>,
+    Query(params): Query<MemeFilterQuery>,
     Extension(db_pool): Extension<MySqlPool>,
     Extension(vars): Extension<ConfVars>,
 ) -> Result<impl IntoResponse, APIError> {
-    let random = Meme::get_random(params.0, &db_pool, vars.cdn).await?;
+    let random = Meme::get_random(params, &db_pool, vars.cdn).await?;
     Ok(Json(MemeResponse {
         status: 200,
         error: None,

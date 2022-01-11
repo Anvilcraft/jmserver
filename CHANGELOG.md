@@ -1,2 +1,1 @@
-- Port API to Rust
-- Use IPFS as CDN
+- Return API error response on missing query parameter

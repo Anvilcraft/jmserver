@@ -2,7 +2,7 @@ use std::convert::Infallible;
 
 use axum::{
     body::{Bytes, Full},
-    extract::multipart::MultipartError,
+    extract::{multipart::MultipartError, rejection::QueryRejection},
     response::IntoResponse,
     Json,
 };
@@ -28,6 +28,8 @@ pub enum APIError {
     Internal(String),
     #[error("IPFS error: {0}")]
     Ipfs(#[from] IPFSError),
+    #[error("Query rejection: {0}")]
+    Query(#[from] QueryRejection),
 }
 
 impl ErrorResponse {
@@ -59,6 +61,7 @@ impl IntoResponse for APIError {
                 ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, Some(err))
             }
             APIError::Ipfs(_) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, None),
+            APIError::Query(_) => ErrorResponse::new(StatusCode::BAD_REQUEST, None),
         };
         let status = res.status;
         (status, Json(res)).into_response()
