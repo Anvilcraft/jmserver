@@ -1,6 +1,7 @@
 use crate::config::ConfVars;
 use crate::ipfs::IPFSFile;
 use crate::lib::ExtractIP;
+use crate::models::{Category, Meme, MemeFilter, User};
 use crate::v1::models::*;
 
 use axum::extract::{ContentLengthLimit, Extension, Multipart};
@@ -19,7 +20,12 @@ async fn meme(
     Extension(db_pool): Extension<MySqlPool>,
     Extension(vars): Extension<ConfVars>,
 ) -> Result<impl IntoResponse, APIError> {
-    let meme = Meme::get(params.id, &db_pool, vars.cdn).await?;
+    let meme = V1Meme::new(
+        Meme::get(params.id, &db_pool)
+            .await?
+            .ok_or_else(|| APIError::NotFound("Meme not found".to_string()))?,
+        vars.cdn,
+    );
     Ok(Json(MemeResponse {
         status: 200,
         error: None,
@@ -28,11 +34,15 @@ async fn meme(
 }
 
 async fn memes(
-    Query(params): Query<MemeFilterQuery>,
+    Query(params): Query<MemeFilter>,
     Extension(db_pool): Extension<MySqlPool>,
     Extension(vars): Extension<ConfVars>,
 ) -> Result<impl IntoResponse, APIError> {
-    let memes = Meme::get_all(params, &db_pool, vars.cdn).await?;
+    let memes = Meme::get_all(params, &db_pool)
+        .await?
+        .into_iter()
+        .map(|meme| V1Meme::new(meme, vars.cdn.clone()))
+        .collect();
     Ok(Json(MemesResponse {
         status: 200,
         error: None,
@@ -44,7 +54,9 @@ async fn category(
     Query(params): Query<IDQuery>,
     Extension(db_pool): Extension<MySqlPool>,
 ) -> Result<impl IntoResponse, APIError> {
-    let category = Category::get(&params.id, &db_pool).await?;
+    let category = Category::get(&params.id, &db_pool)
+        .await?
+        .ok_or_else(|| APIError::NotFound("Category not found".to_string()))?;
     Ok(Json(CategoryResponse {
         status: 200,
         error: None,
@@ -67,7 +79,9 @@ async fn user(
     Query(params): Query<UserIDQuery>,
     Extension(db_pool): Extension<MySqlPool>,
 ) -> Result<impl IntoResponse, APIError> {
-    let user = User::get(params, &db_pool).await?;
+    let user = User::get(params.into(), &db_pool)
+        .await?
+        .ok_or_else(|| APIError::NotFound("User not found".to_string()))?;
     Ok(Json(UserResponse {
         status: 200,
         error: None,
@@ -85,11 +99,11 @@ async fn users(Extension(db_pool): Extension<MySqlPool>) -> Result<impl IntoResp
 }
 
 async fn random(
-    Query(params): Query<MemeFilterQuery>,
+    Query(params): Query<MemeFilter>,
     Extension(db_pool): Extension<MySqlPool>,
     Extension(vars): Extension<ConfVars>,
 ) -> Result<impl IntoResponse, APIError> {
-    let random = Meme::get_random(params, &db_pool, vars.cdn).await?;
+    let random = V1Meme::new(Meme::get_random(params, &db_pool).await?, vars.cdn);
     Ok(Json(MemeResponse {
         status: 200,
         error: None,
@@ -140,7 +154,9 @@ async fn upload(
         return Err(APIError::Forbidden("Upload limit reached".to_string()));
     }
 
-    let cat = Category::get(&category, &db_pool).await?;
+    let cat = Category::get(&category, &db_pool)
+        .await?
+        .ok_or_else(|| APIError::BadRequest("Category not existing".to_string()))?;
 
     let ip = ip.to_string();
 

@@ -1,7 +1,6 @@
 mod error;
 pub mod models;
 mod routes;
-mod sql;
 
 use async_trait::async_trait;
 use axum::extract::{FromRequest, RequestParts};

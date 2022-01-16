@@ -15,6 +15,8 @@ mod config;
 mod error;
 mod ipfs;
 mod lib;
+mod models;
+mod sql;
 mod v1;
 
 #[derive(StructOpt)]

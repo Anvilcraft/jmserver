@@ -1,6 +1,8 @@
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize, Serializer};
 
+use crate::models::{Category, Meme, User, UserIdentifier};
+
 fn serialize_status<S>(x: &StatusCode, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -9,7 +11,7 @@ where
 }
 
 #[derive(Serialize)]
-pub struct Meme {
+pub struct V1Meme {
     pub id: String,
     pub link: String,
     pub category: String,
@@ -18,35 +20,20 @@ pub struct Meme {
     pub ipfs: String,
 }
 
-#[derive(Serialize)]
-pub struct Category {
-    pub id: String,
-    pub name: String,
-}
-
-#[derive(Serialize)]
-pub struct User {
-    pub id: String,
-    pub name: String,
-    pub userdir: String,
-    pub tokenhash: String,
-    pub dayuploads: i32,
-}
-
 //Responses
 
 #[derive(Serialize)]
 pub struct MemesResponse {
     pub status: i32,
     pub error: Option<String>,
-    pub memes: Option<Vec<Meme>>,
+    pub memes: Option<Vec<V1Meme>>,
 }
 
 #[derive(Serialize)]
 pub struct MemeResponse {
     pub status: i32,
     pub error: Option<String>,
-    pub meme: Option<Meme>,
+    pub meme: Option<V1Meme>,
 }
 
 #[derive(Serialize)]
@@ -111,9 +98,29 @@ pub struct UserIDQuery {
     pub name: Option<String>,
 }
 
-#[derive(Deserialize)]
-pub struct MemeFilterQuery {
-    pub category: Option<String>,
-    pub user: Option<String>,
-    pub search: Option<String>,
+impl V1Meme {
+    pub fn new(meme: Meme, cdn: String) -> Self {
+        Self {
+            id: meme.id.to_string(),
+            link: format!("{}/{}/{}", cdn, meme.userid, meme.filename),
+            category: meme.category,
+            user: meme.username,
+            timestamp: meme.timestamp.to_string(),
+            ipfs: meme.ipfs,
+        }
+    }
+}
+
+impl From<UserIDQuery> for UserIdentifier {
+    fn from(query: UserIDQuery) -> Self {
+        if let Some(id) = query.id {
+            Self::Id(id)
+        } else if let Some(token) = query.token {
+            Self::Token(token)
+        } else if let Some(name) = query.name {
+            Self::Username(name)
+        } else {
+            Self::Null
+        }
+    }
 }
