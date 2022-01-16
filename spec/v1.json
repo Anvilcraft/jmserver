@@ -1,0 +1,470 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+      "version": "1.0.0",
+      "title": "JensMemes"
+    },
+    "servers": [
+      {
+        "url": "https://api.tilera.xyz/jensmemes/v1"
+      }
+    ],
+    "paths": {
+      "/memes": {
+        "get": {
+          "summary": "List all memes on JensMemes",
+          "parameters": [
+            {
+              "name": "category",
+              "in": "query",
+              "description": "Filter category of the memes",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "user",
+              "in": "query",
+              "description": "Filter user of the memes",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "search",
+              "in": "query",
+              "description": "Search for memes",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "default": {
+              "description": "Meme list response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MemesResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/meme": {
+        "get": {
+          "summary": "Gives a specific meme by ID",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "query",
+              "description": "The ID of the meme",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "default": {
+              "description": "Meme response of this meme",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MemeResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/random": {
+        "get": {
+          "summary": "Gives a random meme",
+          "parameters": [
+            {
+              "name": "category",
+              "in": "query",
+              "description": "Only give a random meme from this category ID",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "user",
+              "in": "query",
+              "description": "Only give a random meme from this user",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "default": {
+              "description": "Meme response of a random meme",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MemeResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/categories": {
+        "get": {
+          "summary": "Get all categories available on JensMemes",
+          "responses": {
+            "default": {
+              "description": "List of all categories on JensMemes",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/CategoriesResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/category": {
+        "get": {
+          "summary": "Get a specific category by ID",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "query",
+              "description": "ID of the category",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "default": {
+              "description": "The requested category",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/CategoryResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/users": {
+        "get": {
+          "summary": "Get all users registered on JensMemes",
+          "responses": {
+            "default": {
+              "description": "All users on JensMemes",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/UsersResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/user": {
+        "get": {
+          "summary": "Get a specific user on JensMemes",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "query",
+              "description": "The ID of the user",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "default": {
+              "description": "The requested user",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/UserResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/upload": {
+        "post": {
+          "summary": "Upload an image or video to JensMemes",
+          "requestBody": {
+            "content": {
+              "multipart/form-data": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "category": {
+                      "type": "string",
+                      "description": "The ID of the category of the meme"
+                    },
+                    "token": {
+                      "type": "string",
+                      "description": "Your JensMemes token"
+                    },
+                    "file": {
+                      "oneOf": [
+                        {
+                          "type": "string",
+                          "format": "binary"
+                        },
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "format": "binary"
+                          }
+                        }
+                      ],
+                      "description": "The file or files to upload to JensMemes"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "responses": {
+            "default": {
+              "description": "Response of the upload",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/UploadResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "components": {
+      "schemas": {
+        "Meme": {
+          "type": "object",
+          "properties": {
+            "link": {
+              "type": "string"
+            },
+            "id": {
+              "type": "string"
+            },
+            "category": {
+              "type": "string"
+            },
+            "user": {
+              "type": "string"
+            },
+            "timestamp": {
+              "type": "string"
+            },
+            "ipfs": {
+              "type": "string"
+            }
+          }
+        },
+        "Category": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            }
+          }
+        },
+        "User": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "userdir": {
+              "type": "string"
+            },
+            "tokenhash": {
+              "type": "string"
+            },
+            "dayuploads": {
+              "type": "integer"
+            }
+          }
+        },
+        "MemesResponse": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 500
+            },
+            "error": {
+              "type": "string"
+            },
+            "memes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/Meme"
+              }
+            }
+          }
+        },
+        "MemeResponse": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 500
+            },
+            "error": {
+              "type": "string"
+            },
+            "meme": {
+              "$ref": "#/components/schemas/Meme"
+            }
+          }
+        },
+        "CategoriesResponse": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 500
+            },
+            "error": {
+              "type": "string"
+            },
+            "memes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/Category"
+              }
+            }
+          }
+        },
+        "CategoryResponse": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 500
+            },
+            "error": {
+              "type": "string"
+            },
+            "meme": {
+              "$ref": "#/components/schemas/Category"
+            }
+          }
+        },
+        "UsersResponse": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 500
+            },
+            "error": {
+              "type": "string"
+            },
+            "memes": {
+              "type": "array",
+              "items": {
+                "$ref": "#/components/schemas/User"
+              }
+            }
+          }
+        },
+        "UserResponse": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "integer",
+              "minimum": 200,
+              "maximum": 500
+            },
+            "error": {
+              "type": "string"
+            },
+            "meme": {
+              "$ref": "#/components/schemas/User"
+            }
+          }
+        },
+        "UploadResponse": {
+          "type": "object",
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "integer",
+              "minimum": 201,
+              "maximum": 500
+            },
+            "error": {
+              "type": "string"
+            },
+            "files": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
