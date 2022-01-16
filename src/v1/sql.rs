@@ -116,14 +116,20 @@ impl Category {
         ip: &String,
         pool: &MySqlPool,
     ) -> Result<u64> {
-        let q = sqlx::query("INSERT INTO memes (filename, user, category, timestamp, ip, cid) VALUES (?, ?, ?, NOW(), ?, ?)")
+        let mut tx = pool.begin().await?;
+        sqlx::query("INSERT INTO memes (filename, user, category, timestamp, ip, cid) VALUES (?, ?, ?, NOW(), ?, ?)")
         .bind(&file.name)
         .bind(&user.id)
         .bind(&self.id)
         .bind(ip)
         .bind(&file.hash)
-        .execute(pool).await?;
-        Ok(q)
+        .execute(&mut tx).await?;
+        let id: u64 = sqlx::query("SELECT LAST_INSERT_ID() as id")
+            .map(|row: MySqlRow| row.get("id"))
+            .fetch_one(&mut tx)
+            .await?;
+        tx.commit().await?;
+        Ok(id)
     }
 }
 

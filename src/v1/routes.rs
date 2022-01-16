@@ -149,7 +149,7 @@ async fn upload(
     for f in files {
         let res = cat.add_meme(&user, &f, &ip, &db_pool).await?;
 
-        if res != 1 {
+        if res == 0 {
             return Err(APIError::Internal("Database insertion error".to_string()));
         }
 
