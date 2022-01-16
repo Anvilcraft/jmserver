@@ -1,6 +1,8 @@
 use reqwest::Url;
 use serde::Deserialize;
-use std::net::SocketAddr;
+use std::{net::SocketAddr, sync::Arc};
+
+use crate::{error::JMError, JMService, JMServiceInner};
 
 #[derive(Deserialize)]
 pub struct Config {
@@ -10,25 +12,19 @@ pub struct Config {
     pub ipfs_api: Url,
 }
 
-pub struct ConfVars {
-    pub cdn: String,
-    pub ipfs_api: Url,
-}
-
 impl Config {
-    pub fn vars(&self) -> ConfVars {
-        ConfVars {
-            cdn: self.cdn.clone(),
-            ipfs_api: self.ipfs_api.clone(),
-        }
+    pub fn service(&self) -> Result<JMService, JMError> {
+        let client = reqwest::ClientBuilder::new().user_agent("curl").build()?;
+        Ok(Arc::new(JMServiceInner {
+            client,
+            ipfs_url: self.ipfs_api.clone(),
+            cdn_url: self.cdn.clone(),
+        }))
     }
 }
 
-impl Clone for ConfVars {
-    fn clone(&self) -> Self {
-        Self {
-            cdn: self.cdn.clone(),
-            ipfs_api: self.ipfs_api.clone(),
-        }
+impl JMServiceInner {
+    pub fn cdn_url(&self) -> String {
+        self.cdn_url.clone()
     }
 }

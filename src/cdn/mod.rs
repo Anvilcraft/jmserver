@@ -14,7 +14,7 @@ use reqwest::{
 };
 use sqlx::MySqlPool;
 
-use crate::config::ConfVars;
+use crate::JMService;
 
 use self::{
     error::CDNError,
@@ -36,12 +36,11 @@ pub fn routes() -> Router<BoxRoute> {
 async fn image(
     Path((user, filename)): Path<(String, String)>,
     Extension(db_pool): Extension<MySqlPool>,
-    Extension(vars): Extension<ConfVars>,
+    Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, CDNError> {
     let filename = urlencoding::decode(&filename)?.into_owned();
     let cid = sql::get_cid(user, filename.clone(), &db_pool).await?;
-    let ipfs = vars.ipfs_client()?;
-    let res = ipfs.cat(cid).await?;
+    let res = service.cat(cid).await?;
     let clength = res
         .headers()
         .get(HeaderName::from_static("x-content-length"))
@@ -61,12 +60,12 @@ async fn image(
 
 async fn users(
     Extension(db_pool): Extension<MySqlPool>,
-    Extension(vars): Extension<ConfVars>,
+    Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, CDNError> {
     let users = sql::get_users(&db_pool).await?;
     Ok(HtmlTemplate(DirTemplate {
         entries: users,
-        prefix: vars.cdn,
+        prefix: service.cdn_url(),
         suffix: "/".to_string(),
     }))
 }

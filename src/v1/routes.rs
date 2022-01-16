@@ -1,8 +1,8 @@
-use crate::config::ConfVars;
 use crate::ipfs::IPFSFile;
 use crate::lib::ExtractIP;
 use crate::models::{Category, Meme, MemeFilter, User};
 use crate::v1::models::*;
+use crate::JMService;
 
 use axum::extract::{ContentLengthLimit, Extension, Multipart};
 use axum::handler::{get, post};
@@ -18,13 +18,13 @@ use super::Query;
 async fn meme(
     Query(params): Query<MemeIDQuery>,
     Extension(db_pool): Extension<MySqlPool>,
-    Extension(vars): Extension<ConfVars>,
+    Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, APIError> {
     let meme = V1Meme::new(
         Meme::get(params.id, &db_pool)
             .await?
             .ok_or_else(|| APIError::NotFound("Meme not found".to_string()))?,
-        vars.cdn,
+        service.cdn_url(),
     );
     Ok(Json(MemeResponse {
         status: 200,
@@ -36,12 +36,12 @@ async fn meme(
 async fn memes(
     Query(params): Query<MemeFilter>,
     Extension(db_pool): Extension<MySqlPool>,
-    Extension(vars): Extension<ConfVars>,
+    Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, APIError> {
     let memes = Meme::get_all(params, &db_pool)
         .await?
         .into_iter()
-        .map(|meme| V1Meme::new(meme, vars.cdn.clone()))
+        .map(|meme| V1Meme::new(meme, service.cdn_url()))
         .collect();
     Ok(Json(MemesResponse {
         status: 200,
@@ -101,9 +101,9 @@ async fn users(Extension(db_pool): Extension<MySqlPool>) -> Result<impl IntoResp
 async fn random(
     Query(params): Query<MemeFilter>,
     Extension(db_pool): Extension<MySqlPool>,
-    Extension(vars): Extension<ConfVars>,
+    Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, APIError> {
-    let random = V1Meme::new(Meme::get_random(params, &db_pool).await?, vars.cdn);
+    let random = V1Meme::new(Meme::get_random(params, &db_pool).await?, service.cdn_url());
     Ok(Json(MemeResponse {
         status: 200,
         error: None,
@@ -114,14 +114,12 @@ async fn random(
 async fn upload(
     ContentLengthLimit(mut form): ContentLengthLimit<Multipart, { 1024 * 1024 * 1024 }>,
     Extension(db_pool): Extension<MySqlPool>,
-    Extension(vars): Extension<ConfVars>,
+    Extension(service): Extension<JMService>,
     ExtractIP(ip): ExtractIP,
 ) -> Result<impl IntoResponse, APIError> {
     let mut category: Option<String> = None;
     let mut token: Option<String> = None;
     let mut files: Vec<IPFSFile> = vec![];
-
-    let ipfs = vars.ipfs_client()?;
 
     while let Some(field) = form.next_field().await? {
         match field.name().ok_or_else(|| {
@@ -136,7 +134,7 @@ async fn upload(
                         APIError::BadRequest("A file field has no filename".to_string())
                     })?
                     .to_string();
-                let file = ipfs.add(field.bytes().await?, filename).await?;
+                let file = service.add(field.bytes().await?, filename).await?;
                 files.push(file);
             }
             _ => (),
@@ -169,10 +167,10 @@ async fn upload(
             return Err(APIError::Internal("Database insertion error".to_string()));
         }
 
-        ipfs.pin(f.hash).await?;
+        service.pin(f.hash).await?;
         links.push(format!(
             "{}/{}/{}",
-            vars.cdn,
+            service.cdn_url(),
             user.id.clone(),
             f.name.clone()
         ));

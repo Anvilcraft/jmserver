@@ -5,8 +5,9 @@ use axum::{
 };
 use config::Config;
 use error::JMError;
+use reqwest::{Client, Url};
 use sqlx::MySqlPool;
-use std::path::PathBuf;
+use std::{path::PathBuf, sync::Arc};
 use structopt::StructOpt;
 use tower_http::{add_extension::AddExtensionLayer, set_header::SetResponseHeaderLayer};
 
@@ -30,6 +31,14 @@ struct Opt {
     config: PathBuf,
 }
 
+pub struct JMServiceInner {
+    client: Client,
+    ipfs_url: Url,
+    cdn_url: String,
+}
+
+pub type JMService = Arc<JMServiceInner>;
+
 #[tokio::main]
 async fn main() -> Result<(), JMError> {
     let opt = Opt::from_args();
@@ -37,12 +46,13 @@ async fn main() -> Result<(), JMError> {
     let config = toml::from_slice::<Config>(&config)?;
 
     let db_pool = MySqlPool::new(&config.database).await?;
+    let service = config.service()?;
 
     let app = Router::new()
         .nest("/api/v1", v1::routes())
         .nest("/cdn", cdn::routes())
         .layer(AddExtensionLayer::new(db_pool))
-        .layer(AddExtensionLayer::new(config.vars()))
+        .layer(AddExtensionLayer::new(service))
         .layer(SetResponseHeaderLayer::<_, Request<Body>>::if_not_present(
             header::ACCESS_CONTROL_ALLOW_ORIGIN,
             HeaderValue::from_static("*"),

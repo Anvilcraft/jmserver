@@ -10,4 +10,6 @@ pub enum JMError {
     Database(#[from] sqlx::Error),
     #[error("Axum error: {0}")]
     Axum(#[from] hyper::Error),
+    #[error("Reqwest error: {0}")]
+    Reqwest(#[from] reqwest::Error),
 }

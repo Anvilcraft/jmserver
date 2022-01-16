@@ -3,11 +3,11 @@ use std::time::Duration;
 use axum::body::Bytes;
 use reqwest::{
     multipart::{Form, Part},
-    Client, Response, Url,
+    Response,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::config::ConfVars;
+use crate::JMServiceInner;
 
 use self::error::IPFSError;
 
@@ -38,16 +38,11 @@ pub struct PinQuery {
     pub arg: String,
 }
 
-pub struct IpfsClient {
-    url: Url,
-    client: Client,
-}
-
-impl IpfsClient {
+impl JMServiceInner {
     pub async fn cat(&self, cid: String) -> Result<Response, IPFSError> {
         let request = self
             .client
-            .post(self.url.join("/api/v0/cat")?)
+            .post(self.ipfs_url.join("/api/v0/cat")?)
             .query(&CatQuery::new(cid));
         Ok(request.send().await?)
     }
@@ -55,7 +50,7 @@ impl IpfsClient {
     pub async fn add(&self, file: Bytes, filename: String) -> Result<IPFSFile, IPFSError> {
         let request = self
             .client
-            .post(self.url.join("/api/v0/add")?)
+            .post(self.ipfs_url.join("/api/v0/add")?)
             .query(&AddQuery::new(false))
             .multipart(Form::new().part("file", Part::stream(file).file_name(filename)));
         let response = request.send().await?;
@@ -66,7 +61,7 @@ impl IpfsClient {
     pub async fn pin(&self, cid: String) -> Result<(), IPFSError> {
         let request = self
             .client
-            .post(self.url.join("/api/v0/pin/add")?)
+            .post(self.ipfs_url.join("/api/v0/pin/add")?)
             .query(&PinQuery::new(cid))
             .timeout(Duration::from_secs(60));
         request.send().await?;
@@ -89,15 +84,5 @@ impl AddQuery {
 impl PinQuery {
     pub fn new(cid: String) -> Self {
         Self { arg: cid }
-    }
-}
-
-impl ConfVars {
-    pub fn ipfs_client(&self) -> Result<IpfsClient, IPFSError> {
-        let client = reqwest::ClientBuilder::new().user_agent("curl").build()?;
-        Ok(IpfsClient {
-            url: self.ipfs_api.clone(),
-            client,
-        })
     }
 }
