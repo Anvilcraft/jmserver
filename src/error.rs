@@ -1,4 +1,6 @@
+use hyper::StatusCode;
 use thiserror::Error;
+use url::ParseError;
 
 #[derive(Error, Debug)]
 pub enum JMError {
@@ -12,4 +14,14 @@ pub enum JMError {
     Axum(#[from] hyper::Error),
     #[error("Reqwest error: {0}")]
     Reqwest(#[from] reqwest::Error),
+}
+
+#[derive(Error, Debug)]
+pub enum ServiceError {
+    #[error("Reqwest error: {0}")]
+    Reqwest(#[from] reqwest::Error),
+    #[error("URL parse error: {0}")]
+    Url(#[from] ParseError),
+    #[error("Invalid response code: {0}")]
+    InvalidResponse(StatusCode),
 }

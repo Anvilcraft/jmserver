@@ -7,14 +7,14 @@ use axum::{
 use reqwest::StatusCode;
 use thiserror::Error;
 
-use crate::ipfs::error::IPFSError;
+use crate::error::ServiceError;
 
 #[derive(Error, Debug)]
 pub enum CDNError {
     #[error("SQL error: {0}")]
     Sql(#[from] sqlx::Error),
-    #[error("IPFS error: {0}")]
-    Ipfs(#[from] IPFSError),
+    #[error("JMService error: {0}")]
+    Service(#[from] ServiceError),
     #[error("Decode error: {0}")]
     Decode(#[from] FromUtf8Error),
     #[error("Internal server error")]

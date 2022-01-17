@@ -10,6 +10,9 @@ pub struct Config {
     pub database: String,
     pub cdn: String,
     pub ipfs_api: Url,
+    pub matrix_url: Url,
+    pub matrix_token: String,
+    pub matrix_domain: String,
 }
 
 impl Config {
@@ -19,6 +22,9 @@ impl Config {
             client,
             ipfs_url: self.ipfs_api.clone(),
             cdn_url: self.cdn.clone(),
+            matrix_url: self.matrix_url.clone(),
+            matrix_token: self.matrix_token.clone(),
+            matrix_domain: self.matrix_domain.clone(),
         }))
     }
 }

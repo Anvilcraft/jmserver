@@ -16,6 +16,7 @@ mod config;
 mod error;
 mod ipfs;
 mod lib;
+mod matrix;
 mod models;
 mod sql;
 mod v1;
@@ -35,6 +36,9 @@ pub struct JMServiceInner {
     client: Client,
     ipfs_url: Url,
     cdn_url: String,
+    matrix_url: Url,
+    matrix_token: String,
+    matrix_domain: String,
 }
 
 pub type JMService = Arc<JMServiceInner>;

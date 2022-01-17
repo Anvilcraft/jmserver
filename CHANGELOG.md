@@ -1,1 +1,3 @@
-- Return API error response on missing query parameter
+- Initial Matrix implementation
+    - Allows bots to know, when a new meme was uploaded
+    - First step towards decentralization

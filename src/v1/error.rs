@@ -10,7 +10,7 @@ use reqwest::StatusCode;
 use thiserror::Error;
 
 use super::models::ErrorResponse;
-use crate::ipfs::error::IPFSError;
+use crate::error::ServiceError;
 
 #[derive(Error, Debug)]
 pub enum APIError {
@@ -28,8 +28,8 @@ pub enum APIError {
     NotFound(String),
     #[error("{0}")]
     Internal(String),
-    #[error("IPFS error: {0}")]
-    Ipfs(#[from] IPFSError),
+    #[error("JMService error: {0}")]
+    Service(#[from] ServiceError),
     #[error("Query rejection: {0}")]
     Query(#[from] QueryRejection),
 }
@@ -60,10 +60,8 @@ impl IntoResponse for APIError {
             APIError::Unauthorized(err) => ErrorResponse::new(StatusCode::UNAUTHORIZED, Some(err)),
             APIError::Forbidden(err) => ErrorResponse::new(StatusCode::FORBIDDEN, Some(err)),
             APIError::NotFound(err) => ErrorResponse::new(StatusCode::NOT_FOUND, Some(err)),
-            APIError::Internal(err) => {
-                ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, Some(err))
-            }
-            APIError::Ipfs(_) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, None),
+            APIError::Internal(err) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, Some(err)),
+            APIError::Service(_) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, None),
             APIError::Query(_) => ErrorResponse::new(StatusCode::BAD_REQUEST, None),
         };
         let status = res.status;

@@ -7,11 +7,7 @@ use reqwest::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::JMServiceInner;
-
-use self::error::IPFSError;
-
-pub(crate) mod error;
+use crate::{error::ServiceError, JMServiceInner};
 
 #[derive(Deserialize)]
 pub struct IPFSFile {
@@ -39,7 +35,7 @@ pub struct PinQuery {
 }
 
 impl JMServiceInner {
-    pub async fn cat(&self, cid: String) -> Result<Response, IPFSError> {
+    pub async fn cat(&self, cid: String) -> Result<Response, ServiceError> {
         let request = self
             .client
             .post(self.ipfs_url.join("/api/v0/cat")?)
@@ -47,7 +43,7 @@ impl JMServiceInner {
         Ok(request.send().await?)
     }
 
-    pub async fn add(&self, file: Bytes, filename: String) -> Result<IPFSFile, IPFSError> {
+    pub async fn add(&self, file: Bytes, filename: String) -> Result<IPFSFile, ServiceError> {
         let request = self
             .client
             .post(self.ipfs_url.join("/api/v0/add")?)
@@ -58,7 +54,7 @@ impl JMServiceInner {
         Ok(res)
     }
 
-    pub async fn pin(&self, cid: String) -> Result<(), IPFSError> {
+    pub async fn pin(&self, cid: String) -> Result<(), ServiceError> {
         let request = self
             .client
             .post(self.ipfs_url.join("/api/v0/pin/add")?)

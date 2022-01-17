@@ -166,7 +166,15 @@ async fn upload(
         if res == 0 {
             return Err(APIError::Internal("Database insertion error".to_string()));
         }
-
+        service
+            .add_meme(
+                cat.id.clone(),
+                f.name.clone(),
+                f.hash.clone(),
+                user.id.clone(),
+                res,
+            )
+            .await?;
         service.pin(f.hash).await?;
         links.push(format!(
             "{}/{}/{}",
