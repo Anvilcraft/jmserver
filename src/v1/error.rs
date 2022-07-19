@@ -2,37 +2,13 @@ use std::convert::Infallible;
 
 use axum::{
     body::{Bytes, Full},
-    extract::{multipart::MultipartError, rejection::QueryRejection},
     response::IntoResponse,
     Json,
 };
 use reqwest::StatusCode;
-use thiserror::Error;
 
 use super::models::ErrorResponse;
-use crate::error::ServiceError;
-
-#[derive(Error, Debug)]
-pub enum APIError {
-    #[error("SQL error: {0}")]
-    Sql(#[from] sqlx::Error),
-    #[error("Multipart form error: {0}")]
-    Multipart(#[from] MultipartError),
-    #[error("{0}")]
-    BadRequest(String),
-    #[error("{0}")]
-    Unauthorized(String),
-    #[error("{0}")]
-    Forbidden(String),
-    #[error("{0}")]
-    NotFound(String),
-    #[error("{0}")]
-    Internal(String),
-    #[error("JMService error: {0}")]
-    Service(#[from] ServiceError),
-    #[error("Query rejection: {0}")]
-    Query(#[from] QueryRejection),
-}
+use crate::error::APIError;
 
 impl ErrorResponse {
     fn new(status: StatusCode, message: Option<String>) -> Self {
@@ -63,6 +39,7 @@ impl IntoResponse for APIError {
             APIError::Internal(err) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, Some(err)),
             APIError::Service(_) => ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, None),
             APIError::Query(_) => ErrorResponse::new(StatusCode::BAD_REQUEST, None),
+            APIError::Decode(_) => ErrorResponse::new(StatusCode::BAD_REQUEST, None),
         };
         let status = res.status;
         (status, Json(res)).into_response()

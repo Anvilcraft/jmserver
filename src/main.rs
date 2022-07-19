@@ -20,6 +20,7 @@ mod matrix;
 mod models;
 mod sql;
 mod v1;
+mod v2;
 
 #[derive(StructOpt)]
 struct Opt {
@@ -34,6 +35,7 @@ struct Opt {
 
 pub struct JMServiceInner {
     client: Client,
+    db_pool: MySqlPool,
     ipfs_url: Url,
     cdn_url: String,
     matrix_url: Url,
@@ -50,12 +52,12 @@ async fn main() -> Result<(), JMError> {
     let config = toml::from_slice::<Config>(&config)?;
 
     let db_pool = MySqlPool::new(&config.database).await?;
-    let service = config.service()?;
+    let service = config.service(db_pool)?;
 
     let app = Router::new()
         .nest("/api/v1", v1::routes())
+        .nest("/api/v2", v2::routes())
         .nest("/cdn", cdn::routes())
-        .layer(AddExtensionLayer::new(db_pool))
         .layer(AddExtensionLayer::new(service))
         .layer(SetResponseHeaderLayer::<_, Request<Body>>::if_not_present(
             header::ACCESS_CONTROL_ALLOW_ORIGIN,

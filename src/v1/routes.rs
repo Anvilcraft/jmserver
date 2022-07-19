@@ -1,6 +1,5 @@
 use crate::ipfs::IPFSFile;
 use crate::lib::ExtractIP;
-use crate::models::{Category, Meme, MemeFilter, User};
 use crate::v1::models::*;
 use crate::JMService;
 
@@ -10,18 +9,17 @@ use axum::response::IntoResponse;
 use axum::routing::BoxRoute;
 use axum::{Json, Router};
 use hyper::StatusCode;
-use sqlx::MySqlPool;
 
-use super::error::APIError;
 use super::Query;
+use crate::error::APIError;
 
 async fn meme(
     Query(params): Query<MemeIDQuery>,
-    Extension(db_pool): Extension<MySqlPool>,
     Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, APIError> {
     let meme = V1Meme::new(
-        Meme::get(params.id, &db_pool)
+        service
+            .get_meme(params.id)
             .await?
             .ok_or_else(|| APIError::NotFound("Meme not found".to_string()))?,
         service.cdn_url(),
@@ -35,10 +33,10 @@ async fn meme(
 
 async fn memes(
     Query(params): Query<MemeFilter>,
-    Extension(db_pool): Extension<MySqlPool>,
     Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, APIError> {
-    let memes = Meme::get_all(params, &db_pool)
+    let memes = service
+        .get_memes(params.into())
         .await?
         .into_iter()
         .map(|meme| V1Meme::new(meme, service.cdn_url()))
@@ -52,9 +50,10 @@ async fn memes(
 
 async fn category(
     Query(params): Query<IDQuery>,
-    Extension(db_pool): Extension<MySqlPool>,
+    Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, APIError> {
-    let category = Category::get(&params.id, &db_pool)
+    let category = service
+        .get_category(&params.id)
         .await?
         .ok_or_else(|| APIError::NotFound("Category not found".to_string()))?;
     Ok(Json(CategoryResponse {
@@ -65,9 +64,9 @@ async fn category(
 }
 
 async fn categories(
-    Extension(db_pool): Extension<MySqlPool>,
+    Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, APIError> {
-    let categories = Category::get_all(&db_pool).await?;
+    let categories = service.get_categories().await?;
     Ok(Json(CategoriesResponse {
         status: 200,
         error: None,
@@ -77,9 +76,10 @@ async fn categories(
 
 async fn user(
     Query(params): Query<UserIDQuery>,
-    Extension(db_pool): Extension<MySqlPool>,
+    Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, APIError> {
-    let user = User::get(params.into(), &db_pool)
+    let user = service
+        .get_user(params.into())
         .await?
         .ok_or_else(|| APIError::NotFound("User not found".to_string()))?;
     Ok(Json(UserResponse {
@@ -89,8 +89,8 @@ async fn user(
     }))
 }
 
-async fn users(Extension(db_pool): Extension<MySqlPool>) -> Result<impl IntoResponse, APIError> {
-    let users = User::get_all(&db_pool).await?;
+async fn users(Extension(service): Extension<JMService>) -> Result<impl IntoResponse, APIError> {
+    let users = service.get_users().await?;
     Ok(Json(UsersResponse {
         status: 200,
         error: None,
@@ -100,10 +100,12 @@ async fn users(Extension(db_pool): Extension<MySqlPool>) -> Result<impl IntoResp
 
 async fn random(
     Query(params): Query<MemeFilter>,
-    Extension(db_pool): Extension<MySqlPool>,
     Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, APIError> {
-    let random = V1Meme::new(Meme::get_random(params, &db_pool).await?, service.cdn_url());
+    let random = V1Meme::new(
+        service.get_random_meme(params.into()).await?,
+        service.cdn_url(),
+    );
     Ok(Json(MemeResponse {
         status: 200,
         error: None,
@@ -113,7 +115,6 @@ async fn random(
 
 async fn upload(
     ContentLengthLimit(mut form): ContentLengthLimit<Multipart, { 1024 * 1024 * 1024 }>,
-    Extension(db_pool): Extension<MySqlPool>,
     Extension(service): Extension<JMService>,
     ExtractIP(ip): ExtractIP,
 ) -> Result<impl IntoResponse, APIError> {
@@ -134,7 +135,7 @@ async fn upload(
                         APIError::BadRequest("A file field has no filename".to_string())
                     })?
                     .to_string();
-                let file = service.add(field.bytes().await?, filename).await?;
+                let file = service.ipfs_add(field.bytes().await?, filename).await?;
                 files.push(file);
             }
             _ => (),
@@ -143,7 +144,8 @@ async fn upload(
 
     let token = token.ok_or_else(|| APIError::Unauthorized("Missing token".to_string()))?;
     let category = category.ok_or_else(|| APIError::BadRequest("Missing category".to_string()))?;
-    let user = User::check_token(&token, &db_pool)
+    let user = service
+        .check_token(&token)
         .await?
         .ok_or_else(|| APIError::Forbidden("token not existing".to_string()))?;
     let total = (user.dayuploads as isize) + (files.len() as isize);
@@ -152,7 +154,8 @@ async fn upload(
         return Err(APIError::Forbidden("Upload limit reached".to_string()));
     }
 
-    let cat = Category::get(&category, &db_pool)
+    let cat = service
+        .get_category(&category)
         .await?
         .ok_or_else(|| APIError::BadRequest("Category not existing".to_string()))?;
 
@@ -161,7 +164,7 @@ async fn upload(
     let mut links: Vec<String> = vec![];
 
     for f in files {
-        let res = cat.add_meme(&user, &f, &ip, &db_pool).await?;
+        let res = service.add_meme_sql(&user, &f, &ip, &cat).await?;
 
         if res == 0 {
             return Err(APIError::Internal("Database insertion error".to_string()));
@@ -175,7 +178,7 @@ async fn upload(
                 res,
             )
             .await?;
-        service.pin(f.hash).await?;
+        service.ipfs_pin(f.hash).await?;
         links.push(format!(
             "{}/{}/{}",
             service.cdn_url(),

@@ -12,7 +12,6 @@ use reqwest::{
     header::{HeaderName, CONTENT_LENGTH},
     StatusCode,
 };
-use sqlx::MySqlPool;
 
 use crate::JMService;
 
@@ -35,12 +34,11 @@ pub fn routes() -> Router<BoxRoute> {
 
 async fn image(
     Path((user, filename)): Path<(String, String)>,
-    Extension(db_pool): Extension<MySqlPool>,
     Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, CDNError> {
     let filename = urlencoding::decode(&filename)?.into_owned();
-    let cid = sql::get_cid(user, filename.clone(), &db_pool).await?;
-    let res = service.cat(cid).await?;
+    let cid = sql::get_cid(user, filename.clone(), &service.db_pool).await?;
+    let res = service.ipfs_cat(cid).await?;
     let clength = res
         .headers()
         .get(HeaderName::from_static("x-content-length"))
@@ -58,11 +56,8 @@ async fn image(
     ))
 }
 
-async fn users(
-    Extension(db_pool): Extension<MySqlPool>,
-    Extension(service): Extension<JMService>,
-) -> Result<impl IntoResponse, CDNError> {
-    let users = sql::get_users(&db_pool).await?;
+async fn users(Extension(service): Extension<JMService>) -> Result<impl IntoResponse, CDNError> {
+    let users = sql::get_users(&service.db_pool).await?;
     Ok(HtmlTemplate(DirTemplate {
         entries: users,
         prefix: service.cdn_url(),
@@ -72,9 +67,9 @@ async fn users(
 
 async fn memes(
     Path(user): Path<String>,
-    Extension(db_pool): Extension<MySqlPool>,
+    Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, CDNError> {
-    let memes = sql::get_memes(user, &db_pool).await?;
+    let memes = sql::get_memes(user, &service.db_pool).await?;
     Ok(HtmlTemplate(DirTemplate {
         entries: memes,
         prefix: ".".to_string(),

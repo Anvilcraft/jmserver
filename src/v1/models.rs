@@ -1,7 +1,7 @@
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize, Serializer};
 
-use crate::models::{Category, Meme, User, UserIdentifier};
+use crate::models::{Category, Meme, MemeOptions, User, UserIdentifier};
 
 fn serialize_status<S>(x: &StatusCode, s: S) -> Result<S::Ok, S::Error>
 where
@@ -121,6 +121,26 @@ impl From<UserIDQuery> for UserIdentifier {
             Self::Username(name)
         } else {
             Self::Null
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct MemeFilter {
+    pub category: Option<String>,
+    pub user: Option<String>,
+    pub search: Option<String>,
+}
+
+impl From<MemeFilter> for MemeOptions {
+    fn from(filter: MemeFilter) -> Self {
+        Self {
+            category: filter.category,
+            user_id: None,
+            username: filter.user,
+            search: filter.search,
+            limit: None,
+            after: None,
         }
     }
 }

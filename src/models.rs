@@ -1,4 +1,4 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct Meme {
@@ -33,9 +33,24 @@ pub enum UserIdentifier {
     Null,
 }
 
-#[derive(Deserialize)]
-pub struct MemeFilter {
+pub struct MemeOptions {
     pub category: Option<String>,
-    pub user: Option<String>,
+    pub user_id: Option<String>,
+    pub username: Option<String>,
     pub search: Option<String>,
+    pub limit: Option<i32>,
+    pub after: Option<i32>,
+}
+
+impl MemeOptions {
+    pub fn empty() -> Self {
+        Self {
+            category: None,
+            user_id: None,
+            username: None,
+            search: None,
+            limit: None,
+            after: None,
+        }
+    }
 }

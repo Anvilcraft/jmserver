@@ -7,7 +7,7 @@ use axum::extract::{FromRequest, RequestParts};
 pub use routes::routes;
 use serde::de::DeserializeOwned;
 
-use self::error::APIError;
+use crate::error::APIError;
 
 pub struct Query<T>(pub T);
 

@@ -1,3 +1,6 @@
+use std::string::FromUtf8Error;
+
+use axum::extract::{multipart::MultipartError, rejection::QueryRejection};
 use hyper::StatusCode;
 use thiserror::Error;
 use url::ParseError;
@@ -24,4 +27,28 @@ pub enum ServiceError {
     Url(#[from] ParseError),
     #[error("Invalid response code: {0}")]
     InvalidResponse(StatusCode),
+}
+
+#[derive(Error, Debug)]
+pub enum APIError {
+    #[error("SQL error: {0}")]
+    Sql(#[from] sqlx::Error),
+    #[error("Multipart form error: {0}")]
+    Multipart(#[from] MultipartError),
+    #[error("{0}")]
+    BadRequest(String),
+    #[error("{0}")]
+    Unauthorized(String),
+    #[error("{0}")]
+    Forbidden(String),
+    #[error("{0}")]
+    NotFound(String),
+    #[error("{0}")]
+    Internal(String),
+    #[error("JMService error: {0}")]
+    Service(#[from] ServiceError),
+    #[error("Query rejection: {0}")]
+    Query(#[from] QueryRejection),
+    #[error("Decode error: {0}")]
+    Decode(#[from] FromUtf8Error),
 }

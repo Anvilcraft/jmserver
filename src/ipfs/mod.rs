@@ -35,7 +35,7 @@ pub struct PinQuery {
 }
 
 impl JMServiceInner {
-    pub async fn cat(&self, cid: String) -> Result<Response, ServiceError> {
+    pub async fn ipfs_cat(&self, cid: String) -> Result<Response, ServiceError> {
         let request = self
             .client
             .post(self.ipfs_url.join("/api/v0/cat")?)
@@ -43,7 +43,7 @@ impl JMServiceInner {
         Ok(request.send().await?)
     }
 
-    pub async fn add(&self, file: Bytes, filename: String) -> Result<IPFSFile, ServiceError> {
+    pub async fn ipfs_add(&self, file: Bytes, filename: String) -> Result<IPFSFile, ServiceError> {
         let request = self
             .client
             .post(self.ipfs_url.join("/api/v0/add")?)
@@ -54,7 +54,7 @@ impl JMServiceInner {
         Ok(res)
     }
 
-    pub async fn pin(&self, cid: String) -> Result<(), ServiceError> {
+    pub async fn ipfs_pin(&self, cid: String) -> Result<(), ServiceError> {
         let request = self
             .client
             .post(self.ipfs_url.join("/api/v0/pin/add")?)
