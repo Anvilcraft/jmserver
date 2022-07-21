@@ -26,6 +26,11 @@ pub struct User {
     pub dayuploads: i32,
 }
 
+#[derive(Serialize)]
+pub struct Count {
+    pub count: i64,
+}
+
 pub enum UserIdentifier {
     Id(String),
     Token(String),

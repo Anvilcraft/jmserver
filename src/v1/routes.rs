@@ -137,7 +137,7 @@ async fn upload(
                     .to_string();
                 let file = service.ipfs_add(field.bytes().await?, filename).await?;
                 files.push(file);
-            }
+            },
             _ => (),
         }
     }

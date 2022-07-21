@@ -44,7 +44,7 @@
             {
               "name": "limit",
               "in": "query",
-              "description": "How many memes should be returned at maximum",
+              "description": "How many memes should be returned at maximum (-1 for no limit)",
               "required": false,
               "schema": {
                 "type": "string"
@@ -87,7 +87,7 @@
           }
         },
         "post": {
-          "summary": "Upload an image or video to JensMemes",
+          "summary": "Upload an image or video to JensMemes (WIP)",
           "security": [
             {
               "discord": []
@@ -239,16 +239,36 @@
           }
         }
       },
-      "/memes/stream": {
+      "/memes/count": {
         "get": {
-          "summary": "Returns a stream of new uploaded memes",
+          "summary": "Gives the total number of memes",
+          "parameters": [
+            {
+              "name": "category",
+              "in": "query",
+              "description": "Only count memes from this category ID",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "user",
+              "in": "query",
+              "description": "Only count memes from this user",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
           "responses": {
             "200": {
-              "description": "Stream of memes",
+              "description": "Amount of memes",
               "content": {
-                "application/x-json-stream": {
+                "application/json": {
                   "schema": {
-                    "$ref": "#/components/schemas/Meme"
+                    "$ref": "#/components/schemas/Count"
                   }
                 }
               }
@@ -402,6 +422,103 @@
           }
         }
       },
+      "/users/{id}/memes" : {
+        "get": {
+          "summary": "Get all memes of a user",
+          "parameters": [
+            {
+              "name": "limit",
+              "in": "query",
+              "description": "How many memes should be returned at maximum (-1 for no limit)",
+              "required": false,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "after",
+              "in": "query",
+              "description": "ID of the meme after which the returned memes should start",
+              "required": false,
+              "schema": {
+                "type": "integer"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Meme list response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/Meme"
+                    }
+                  }
+                }
+              }
+            },
+            "default": {
+              "description": "Some error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "/users/{id}/memes/{filename}": {
+        "get": {
+          "summary": "Gives a specific meme from a user by filename",
+          "parameters": [
+            {
+              "name": "id",
+              "in": "path",
+              "description": "The ID of the user",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            },
+            {
+              "name": "filename",
+              "in": "path",
+              "description": "The filename of the meme",
+              "required": true,
+              "schema": {
+                "type": "string"
+              }
+            }
+          ],
+          "responses": {
+            "200": {
+              "description": "Meme response of this meme",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/Meme"
+                  }
+                }
+              }
+            },
+            "default": {
+              "description": "Some error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/ErrorResponse"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "/clips": {
         "get": {
           "summary": "WIP",
@@ -475,11 +592,14 @@
         "Meme": {
           "type": "object",
           "properties": {
-            "link": {
+            "filename": {
               "type": "string"
             },
             "id": {
               "type": "integer"
+            },
+            "ipfs": {
+              "type": "string"
             },
             "category": {
               "type": "string"
@@ -513,6 +633,14 @@
               "type": "string"
             },
             "dayuploads": {
+              "type": "integer"
+            }
+          }
+        },
+        "Count": {
+          "type": "object",
+          "properties": {
+            "count": {
               "type": "integer"
             }
           }

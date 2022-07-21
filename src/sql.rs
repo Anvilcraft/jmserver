@@ -1,5 +1,5 @@
 use crate::ipfs::IPFSFile;
-use crate::models::{Category, Meme, MemeOptions, User, UserIdentifier};
+use crate::models::{Category, Count, Meme, MemeOptions, User, UserIdentifier};
 use crate::JMServiceInner;
 use sqlx::mysql::MySqlRow;
 use sqlx::{MySqlPool, Result, Row};
@@ -46,12 +46,13 @@ impl JMServiceInner {
     }
 
     pub async fn get_memes(&self, filter: MemeOptions) -> Result<Vec<Meme>> {
-        let q: Vec<Meme> = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ? AND memes.user LIKE ? AND memes.id > ?) ORDER BY memes.id")
+        let q: Vec<Meme> = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ? AND memes.user LIKE ? AND memes.id > ?) ORDER BY memes.id LIMIT ?")
             .bind(filter.category.unwrap_or_else(|| String::from("%")))
-            .bind(format!("%{}%", filter.username.unwrap_or_else(String::new)))
-            .bind(format!("%{}%", filter.search.unwrap_or_else(String::new)))
+            .bind(format!("%{}%", filter.username.unwrap_or_default()))
+            .bind(format!("%{}%", filter.search.unwrap_or_default()))
             .bind(filter.user_id.unwrap_or_else(|| String::from("%")))
             .bind(filter.after.unwrap_or(0))
+            .bind(filter.limit.unwrap_or(100))
             .map(|row: MySqlRow| Meme {
                 id: row.get("id"),
                 filename: row.get("filename"),
@@ -68,8 +69,8 @@ impl JMServiceInner {
     pub async fn get_random_meme(&self, filter: MemeOptions) -> Result<Meme> {
         let q: Meme = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ? AND memes.user LIKE ? AND memes.id > ?) ORDER BY RAND() LIMIT 1")
             .bind(filter.category.unwrap_or_else(|| String::from("%")))
-            .bind(format!("%{}%", filter.username.unwrap_or_else(String::new)))
-            .bind(format!("%{}%", filter.search.unwrap_or_else(String::new)))
+            .bind(format!("%{}%", filter.username.unwrap_or_default()))
+            .bind(format!("%{}%", filter.search.unwrap_or_default()))
             .bind(filter.user_id.unwrap_or_else(|| String::from("%")))
             .bind(filter.after.unwrap_or(0))
             .map(|row: MySqlRow| Meme {
@@ -82,6 +83,20 @@ impl JMServiceInner {
                 ipfs: row.get("cid"),
             })
             .fetch_one(&self.db_pool).await?;
+        Ok(q)
+    }
+
+    pub async fn count_memes(&self, filter: MemeOptions) -> Result<Count> {
+        let q: Count = sqlx::query(
+            "SELECT COUNT(id) AS count FROM memes WHERE category LIKE ? AND user LIKE ?",
+        )
+        .bind(filter.category.unwrap_or_else(|| String::from("%")))
+        .bind(filter.user_id.unwrap_or_else(|| String::from("%")))
+        .map(|row: MySqlRow| Count {
+            count: row.get("count"),
+        })
+        .fetch_one(&self.db_pool)
+        .await?;
         Ok(q)
     }
 

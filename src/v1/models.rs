@@ -139,7 +139,7 @@ impl From<MemeFilter> for MemeOptions {
             user_id: None,
             username: filter.user,
             search: filter.search,
-            limit: None,
+            limit: Some(-1),
             after: None,
         }
     }

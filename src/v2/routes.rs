@@ -12,7 +12,7 @@ use crate::{
     JMService,
 };
 
-use super::models::{V2Meme, V2User};
+use super::models::{MemeFilterQuery, V2Meme, V2User};
 
 async fn get_meme(
     Path(meme_id): Path<i32>,
@@ -27,16 +27,33 @@ async fn get_meme(
 }
 
 async fn get_memes(
+    Query(filter): Query<MemeFilterQuery>,
     Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, APIError> {
     Ok(Json(
         service
-            .get_memes(MemeOptions::empty())
+            .get_memes(filter.into())
             .await?
             .into_iter()
             .map(V2Meme::from)
             .collect::<Vec<V2Meme>>(),
     ))
+}
+
+async fn get_random_meme(
+    Query(filter): Query<MemeFilterQuery>,
+    Extension(service): Extension<JMService>,
+) -> Result<impl IntoResponse, APIError> {
+    Ok(Json(V2Meme::from(
+        service.get_random_meme(filter.into()).await?,
+    )))
+}
+
+async fn count_memes(
+    Query(filter): Query<MemeFilterQuery>,
+    Extension(service): Extension<JMService>,
+) -> Result<impl IntoResponse, APIError> {
+    Ok(Json(service.count_memes(filter.into()).await?))
 }
 
 async fn get_category(
@@ -80,6 +97,7 @@ async fn get_users(
 }
 
 async fn get_user_memes(
+    Query(filter): Query<MemeFilterQuery>,
     Path(user_id): Path<String>,
     Extension(service): Extension<JMService>,
 ) -> Result<impl IntoResponse, APIError> {
@@ -90,8 +108,8 @@ async fn get_user_memes(
                 user_id: Some(user_id),
                 username: None,
                 search: None,
-                limit: None,
-                after: None,
+                limit: filter.limit,
+                after: filter.after,
             })
             .await?
             .into_iter()
@@ -113,15 +131,35 @@ async fn get_user_meme(
     )))
 }
 
+fn meme_routes() -> Router<BoxRoute> {
+    Router::new()
+        .route("/", get(get_memes))
+        .route("/:meme_id", get(get_meme))
+        .route("/random", get(get_random_meme))
+        .route("/count", get(count_memes))
+        .boxed()
+}
+
+fn category_routes() -> Router<BoxRoute> {
+    Router::new()
+        .route("/", get(get_categories))
+        .route("/:category_id", get(get_category))
+        .boxed()
+}
+
+fn user_routes() -> Router<BoxRoute> {
+    Router::new()
+        .route("/", get(get_users))
+        .route("/:user_id", get(get_user))
+        .route("/:user_id/memes", get(get_user_memes))
+        .route("/:user_id/memes/:filename", get(get_user_meme))
+        .boxed()
+}
+
 pub fn routes() -> Router<BoxRoute> {
     Router::new()
-        .route("/memes", get(get_memes))
-        .route("/memes/:meme_id", get(get_meme))
-        .route("/categories", get(get_categories))
-        .route("/categories/:category_id", get(get_category))
-        .route("/users", get(get_users))
-        .route("/users/:user_id", get(get_user))
-        .route("/users/:user_id/memes", get(get_user_memes))
-        .route("/users/:user_id/memes/:filename", get(get_user_meme))
+        .nest("/memes", meme_routes())
+        .nest("/categories", category_routes())
+        .nest("/users", user_routes())
         .boxed()
 }

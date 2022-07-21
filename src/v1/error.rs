@@ -41,7 +41,7 @@ impl IntoResponse for APIError {
             APIError::NotFound(err) => ErrorResponse::new(StatusCode::NOT_FOUND, Some(err)),
             APIError::Internal(err) => {
                 ErrorResponse::new(StatusCode::INTERNAL_SERVER_ERROR, Some(err))
-            }
+            },
             APIError::Service(err) => ErrorResponse::new(
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Some(err.get_response_message()),

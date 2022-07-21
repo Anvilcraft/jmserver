@@ -1,5 +1,5 @@
-use crate::models::{Meme, User};
-use serde::Serialize;
+use crate::models::{Meme, MemeOptions, User};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 pub struct V2Meme {
@@ -16,6 +16,15 @@ pub struct V2User {
     pub id: String,
     pub name: String,
     pub dayuploads: i32,
+}
+
+#[derive(Deserialize)]
+pub struct MemeFilterQuery {
+    pub category: Option<String>,
+    pub user: Option<String>,
+    pub search: Option<String>,
+    pub limit: Option<i32>,
+    pub after: Option<i32>,
 }
 
 #[derive(Serialize)]
@@ -49,6 +58,19 @@ impl From<User> for V2User {
             id: user.id,
             name: user.name,
             dayuploads: user.dayuploads,
+        }
+    }
+}
+
+impl From<MemeFilterQuery> for MemeOptions {
+    fn from(query: MemeFilterQuery) -> Self {
+        Self {
+            category: query.category,
+            user_id: query.user,
+            username: None,
+            search: query.search,
+            limit: query.limit,
+            after: query.after,
         }
     }
 }
