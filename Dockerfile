@@ -14,7 +14,7 @@ FROM debian:buster
 
 COPY --from=builder /usr/src/jmserver/target/release/jmserver /usr/bin
 
-RUN apt update && apt install -y libssl1.1 dumb-init
+RUN apt update && apt install -y libssl1.1 dumb-init curl
 
 VOLUME ["/data"]
 
