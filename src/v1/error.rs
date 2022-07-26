@@ -57,7 +57,19 @@ impl IntoResponse for APIError {
 impl ServiceError {
     fn get_response_message(&self) -> String {
         match self {
-            ServiceError::Reqwest(_) => "Reqwest error".to_string(),
+            ServiceError::Reqwest(err) => {
+                format!(
+                    "URL: {}, Status Code: {}",
+                    match err.url() {
+                        Some(url) => url.to_string(),
+                        None => "No URL in error".to_string(),
+                    },
+                    match err.status() {
+                        Some(code) => code.to_string(),
+                        None => "No Status Code in error".to_string(),
+                    }
+                )
+            },
             ServiceError::Url(_) => "URL parse error".to_string(),
             ServiceError::InvalidResponse(code) => format!("Invalid response code: {}", code),
         }
