@@ -139,7 +139,7 @@ impl From<MemeFilter> for MemeOptions {
             user_id: None,
             username: filter.user,
             search: filter.search,
-            limit: Some(-1),
+            limit: Some(100000), //TODO: find postgres compatible default value
             after: None,
         }
     }

@@ -6,7 +6,7 @@ use axum::{
 use config::Config;
 use error::JMError;
 use reqwest::{Client, Url};
-use sqlx::MySqlPool;
+use sqlx::PgPool;
 use std::{path::PathBuf, sync::Arc};
 use structopt::StructOpt;
 use tower_http::{add_extension::AddExtensionLayer, set_header::SetResponseHeaderLayer};
@@ -35,7 +35,7 @@ struct Opt {
 
 pub struct JMServiceInner {
     client: Client,
-    db_pool: MySqlPool,
+    db_pool: PgPool,
     ipfs_url: Url,
     cdn_url: String,
     matrix_url: Url,
@@ -51,7 +51,7 @@ async fn main() -> Result<(), JMError> {
     let config = std::fs::read(&opt.config)?;
     let config = toml::from_slice::<Config>(&config)?;
 
-    let db_pool = MySqlPool::new(&config.database).await?;
+    let db_pool = PgPool::new(&config.database).await?;
     let service = config.service(db_pool)?;
 
     let app = Router::new()

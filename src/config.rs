@@ -1,6 +1,6 @@
 use reqwest::Url;
 use serde::Deserialize;
-use sqlx::MySqlPool;
+use sqlx::PgPool;
 use std::{net::SocketAddr, sync::Arc};
 
 use crate::{error::JMError, JMService, JMServiceInner};
@@ -17,7 +17,7 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn service(&self, db_pool: MySqlPool) -> Result<JMService, JMError> {
+    pub fn service(&self, db_pool: PgPool) -> Result<JMService, JMError> {
         let client = reqwest::ClientBuilder::new().user_agent("curl").build()?;
         Ok(Arc::new(JMServiceInner {
             client,

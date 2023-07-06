@@ -1,42 +1,17 @@
 use crate::ipfs::IPFSFile;
 use crate::models::{Category, Count, Meme, MemeOptions, User, UserIdentifier};
 use crate::JMServiceInner;
-use sqlx::mysql::MySqlRow;
-use sqlx::{MySqlPool, Result, Row};
-
-impl Category {
-    pub async fn add_meme(
-        &self,
-        user: &User,
-        file: &IPFSFile,
-        ip: &String,
-        pool: &MySqlPool,
-    ) -> Result<u64> {
-        let mut tx = pool.begin().await?;
-        sqlx::query("INSERT INTO memes (filename, user, category, timestamp, ip, cid) VALUES (?, ?, ?, NOW(), ?, ?)")
-        .bind(&file.name)
-        .bind(&user.id)
-        .bind(&self.id)
-        .bind(ip)
-        .bind(&file.hash)
-        .execute(&mut tx).await?;
-        let id: u64 = sqlx::query("SELECT LAST_INSERT_ID() as id")
-            .map(|row: MySqlRow| row.get("id"))
-            .fetch_one(&mut tx)
-            .await?;
-        tx.commit().await?;
-        Ok(id)
-    }
-}
+use sqlx::postgres::PgRow;
+use sqlx::{Result, Row};
 
 impl JMServiceInner {
     pub async fn get_meme(&self, id: i32) -> Result<Option<Meme>> {
-        let q: Option<Meme> = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND memes.id=?").bind(id)
-            .map(|row: MySqlRow| Meme {
+        let q: Option<Meme> = sqlx::query("SELECT memes.id, userid, filename, category, name, extract(epoch FROM timestamp) AS ts, cid FROM memes, users WHERE memes.userid = users.id AND memes.id=?").bind(id)
+            .map(|row: PgRow| Meme {
                 id: row.get("id"),
                 filename: row.get("filename"),
                 username: row.get("name"),
-                userid: row.get("user"),
+                userid: row.get("userid"),
                 category: row.get("category"),
                 timestamp: row.get("ts"),
                 ipfs: row.get("cid"),
@@ -46,18 +21,18 @@ impl JMServiceInner {
     }
 
     pub async fn get_memes(&self, filter: MemeOptions) -> Result<Vec<Meme>> {
-        let q: Vec<Meme> = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ? AND memes.user LIKE ? AND memes.id > ?) ORDER BY memes.id LIMIT ?")
+        let q: Vec<Meme> = sqlx::query("SELECT memes.id, userid, filename, category, name, extract(epoch FROM timestamp) AS ts, cid FROM memes, users WHERE memes.userid = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ? AND memes.userid LIKE ? AND memes.id > ?) ORDER BY memes.id LIMIT ?")
             .bind(filter.category.unwrap_or_else(|| String::from("%")))
             .bind(format!("%{}%", filter.username.unwrap_or_default()))
             .bind(format!("%{}%", filter.search.unwrap_or_default()))
             .bind(filter.user_id.unwrap_or_else(|| String::from("%")))
             .bind(filter.after.unwrap_or(0))
             .bind(filter.limit.unwrap_or(100))
-            .map(|row: MySqlRow| Meme {
+            .map(|row: PgRow| Meme {
                 id: row.get("id"),
                 filename: row.get("filename"),
                 username: row.get("name"),
-                userid: row.get("user"),
+                userid: row.get("userid"),
                 category: row.get("category"),
                 timestamp: row.get("ts"),
                 ipfs: row.get("cid"),
@@ -67,17 +42,17 @@ impl JMServiceInner {
     }
 
     pub async fn get_random_meme(&self, filter: MemeOptions) -> Result<Meme> {
-        let q: Meme = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ? AND memes.user LIKE ? AND memes.id > ?) ORDER BY RAND() LIMIT 1")
+        let q: Meme = sqlx::query("SELECT memes.id, userid, filename, category, name, extract(epoch FROM timestamp) AS ts, cid FROM memes, users WHERE memes.userid = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ? AND memes.userid LIKE ? AND memes.id > ?) ORDER BY RAND() LIMIT 1")
             .bind(filter.category.unwrap_or_else(|| String::from("%")))
             .bind(format!("%{}%", filter.username.unwrap_or_default()))
             .bind(format!("%{}%", filter.search.unwrap_or_default()))
             .bind(filter.user_id.unwrap_or_else(|| String::from("%")))
             .bind(filter.after.unwrap_or(0))
-            .map(|row: MySqlRow| Meme {
+            .map(|row: PgRow| Meme {
                 id: row.get("id"),
                 filename: row.get("filename"),
                 username: row.get("name"),
-                userid: row.get("user"),
+                userid: row.get("userid"),
                 category: row.get("category"),
                 timestamp: row.get("ts"),
                 ipfs: row.get("cid"),
@@ -88,11 +63,11 @@ impl JMServiceInner {
 
     pub async fn count_memes(&self, filter: MemeOptions) -> Result<Count> {
         let q: Count = sqlx::query(
-            "SELECT COUNT(id) AS count FROM memes WHERE category LIKE ? AND user LIKE ?",
+            "SELECT COUNT(id) AS count FROM memes WHERE category LIKE ? AND userid LIKE ?",
         )
         .bind(filter.category.unwrap_or_else(|| String::from("%")))
         .bind(filter.user_id.unwrap_or_else(|| String::from("%")))
-        .map(|row: MySqlRow| Count {
+        .map(|row: PgRow| Count {
             count: row.get("count"),
         })
         .fetch_one(&self.db_pool)
@@ -101,14 +76,14 @@ impl JMServiceInner {
     }
 
     pub async fn get_user_meme(&self, user_id: String, filename: String) -> Result<Option<Meme>> {
-        let q: Option<Meme> = sqlx::query("SELECT memes.id, user, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.user = users.id AND memes.user = ? AND filename = ? ORDER BY memes.id DESC")
+        let q: Option<Meme> = sqlx::query("SELECT memes.id, userid, filename, category, name, extract(epoch FROM timestamp) AS ts, cid FROM memes, users WHERE memes.userid = users.id AND memes.userid = ? AND filename = ? ORDER BY memes.id DESC")
             .bind(user_id)
             .bind(filename)
-            .map(|row: MySqlRow| Meme {
+            .map(|row: PgRow| Meme {
                 id: row.get("id"),
                 filename: row.get("filename"),
                 username: row.get("name"),
-                userid: row.get("user"),
+                userid: row.get("userid"),
                 category: row.get("category"),
                 timestamp: row.get("ts"),
                 ipfs: row.get("cid"),
@@ -120,7 +95,7 @@ impl JMServiceInner {
     pub async fn get_category(&self, id: &String) -> Result<Option<Category>> {
         let q: Option<Category> = sqlx::query("SELECT * FROM categories WHERE id=?")
             .bind(id)
-            .map(|row: MySqlRow| Category {
+            .map(|row: PgRow| Category {
                 id: row.get("id"),
                 name: row.get("name"),
             })
@@ -131,7 +106,7 @@ impl JMServiceInner {
 
     pub async fn get_categories(&self) -> Result<Vec<Category>> {
         let q: Vec<Category> = sqlx::query("SELECT * FROM categories ORDER BY num")
-            .map(|row: MySqlRow| Category {
+            .map(|row: PgRow| Category {
                 id: row.get("id"),
                 name: row.get("name"),
             })
@@ -142,13 +117,13 @@ impl JMServiceInner {
 
     pub async fn get_user(&self, identifier: UserIdentifier) -> Result<Option<User>> {
         let query = match identifier {
-            UserIdentifier::Id(id) => sqlx::query("SELECT id, name, IFNULL(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, IFNULL(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT user, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (user)) AS count ON users.id = count.user) AS users LEFT JOIN token ON users.id = token.uid WHERE users.id = ?").bind(id),
-            UserIdentifier::Token(token) => sqlx::query("SELECT id, name, IFNULL(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, IFNULL(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT user, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (user)) AS count ON users.id = count.user) AS users LEFT JOIN token ON users.id = token.uid WHERE token = ?").bind(token),
-            UserIdentifier::Username(name) => sqlx::query("SELECT id, name, IFNULL(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, IFNULL(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT user, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (user)) AS count ON users.id = count.user) AS users LEFT JOIN token ON users.id = token.uid WHERE name = ?").bind(name),
+            UserIdentifier::Id(id) => sqlx::query("SELECT id, name, COALESCE(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, COALESCE(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT userid, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (userid)) AS count ON users.id = count.userid) AS users LEFT JOIN token ON users.id = token.uid WHERE users.id = ?").bind(id),
+            UserIdentifier::Token(token) => sqlx::query("SELECT id, name, COALESCE(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, COALESCE(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT userid, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (userid)) AS count ON users.id = count.userid) AS users LEFT JOIN token ON users.id = token.uid WHERE token = ?").bind(token),
+            UserIdentifier::Username(name) => sqlx::query("SELECT id, name, COALESCE(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, COALESCE(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT userid, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (userid)) AS count ON users.id = count.userid) AS users LEFT JOIN token ON users.id = token.uid WHERE name = ?").bind(name),
             UserIdentifier::Null => sqlx::query("SELECT id, name, '0' AS hash, 0 AS uploads FROM users WHERE id = '000'"),
         };
         let q: Option<User> = query
-            .map(|row: MySqlRow| User {
+            .map(|row: PgRow| User {
                 id: row.get("id"),
                 name: row.get("name"),
                 userdir: row.get("id"),
@@ -161,8 +136,8 @@ impl JMServiceInner {
     }
 
     pub async fn get_users(&self) -> Result<Vec<User>> {
-        let q: Vec<User> = sqlx::query("SELECT id, name, IFNULL(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, IFNULL(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT user, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (user)) AS count ON users.id = count.user) AS users LEFT JOIN token ON users.id = token.uid")
-            .map(|row: MySqlRow| User {
+        let q: Vec<User> = sqlx::query("SELECT id, name, COALESCE(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, COALESCE(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT userid, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURRENT_DATE GROUP BY (userid)) AS count ON users.id = count.userid) AS users LEFT JOIN token ON users.id = token.uid")
+            .map(|row: PgRow| User {
                 id: row.get("id"),
                 name: row.get("name"),
                 userdir: row.get("id"),
@@ -184,17 +159,17 @@ impl JMServiceInner {
         file: &IPFSFile,
         ip: &String,
         category: &Category,
-    ) -> Result<u64> {
+    ) -> Result<u32> {
         let mut tx = self.db_pool.begin().await?;
-        sqlx::query("INSERT INTO memes (filename, user, category, timestamp, ip, cid) VALUES (?, ?, ?, NOW(), ?, ?)")
+        sqlx::query("INSERT INTO memes (filename, userid, category, timestamp, ip, cid) VALUES (?, ?, ?, NOW(), ?, ?)")
         .bind(&file.name)
         .bind(&user.id)
         .bind(&category.id)
         .bind(ip)
         .bind(&file.hash)
         .execute(&mut tx).await?;
-        let id: u64 = sqlx::query("SELECT LAST_INSERT_ID() as id")
-            .map(|row: MySqlRow| row.get("id"))
+        let id: u32 = sqlx::query("SELECT LASTVAL() as id")
+            .map(|row: PgRow| row.get("id"))
             .fetch_one(&mut tx)
             .await?;
         tx.commit().await?;
