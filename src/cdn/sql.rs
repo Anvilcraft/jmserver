@@ -2,7 +2,7 @@ use sqlx::{postgres::PgRow, PgPool, Result, Row};
 
 pub async fn get_cid(user: String, filename: String, pool: &PgPool) -> Result<String> {
     let q: String =
-        sqlx::query("SELECT cid FROM memes WHERE user = ? AND filename = ? ORDER BY id DESC")
+        sqlx::query("SELECT cid FROM memes WHERE userid = $1 AND filename = $2 ORDER BY id DESC")
             .bind(user)
             .bind(filename)
             .map(|row: PgRow| row.get("cid"))
@@ -12,7 +12,7 @@ pub async fn get_cid(user: String, filename: String, pool: &PgPool) -> Result<St
 }
 
 pub async fn get_memes(user: String, pool: &PgPool) -> Result<Vec<String>> {
-    let q: Vec<String> = sqlx::query("SELECT filename FROM memes WHERE user = ? ORDER BY filename")
+    let q: Vec<String> = sqlx::query("SELECT filename FROM memes WHERE userid = $1 ORDER BY filename")
         .bind(user)
         .map(|row: PgRow| row.get("filename"))
         .fetch_all(pool)

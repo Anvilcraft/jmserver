@@ -8,7 +8,7 @@ pub struct V2Meme {
     pub ipfs: String,
     pub category: String,
     pub user: String,
-    pub timestamp: i64,
+    pub timestamp: i32,
 }
 
 #[derive(Serialize)]
@@ -69,7 +69,7 @@ impl From<MemeFilterQuery> for MemeOptions {
             user_id: query.user,
             username: None,
             search: query.search,
-            limit: query.limit,
+            limit: Some(query.limit.unwrap_or(100)),
             after: query.after,
         }
     }

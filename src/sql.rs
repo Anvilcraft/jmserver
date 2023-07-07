@@ -6,7 +6,7 @@ use sqlx::{Result, Row};
 
 impl JMServiceInner {
     pub async fn get_meme(&self, id: i32) -> Result<Option<Meme>> {
-        let q: Option<Meme> = sqlx::query("SELECT memes.id, userid, filename, category, name, extract(epoch FROM timestamp) AS ts, cid FROM memes, users WHERE memes.userid = users.id AND memes.id=?").bind(id)
+        let q: Option<Meme> = sqlx::query("SELECT memes.id, userid, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.userid = users.id AND memes.id=$1").bind(id)
             .map(|row: PgRow| Meme {
                 id: row.get("id"),
                 filename: row.get("filename"),
@@ -21,13 +21,13 @@ impl JMServiceInner {
     }
 
     pub async fn get_memes(&self, filter: MemeOptions) -> Result<Vec<Meme>> {
-        let q: Vec<Meme> = sqlx::query("SELECT memes.id, userid, filename, category, name, extract(epoch FROM timestamp) AS ts, cid FROM memes, users WHERE memes.userid = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ? AND memes.userid LIKE ? AND memes.id > ?) ORDER BY memes.id LIMIT ?")
+        let q: Vec<Meme> = sqlx::query("SELECT memes.id, userid, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.userid = users.id AND (category LIKE $1 AND name LIKE $2 AND filename LIKE $3 AND memes.userid LIKE $4 AND memes.id > $5) ORDER BY memes.id LIMIT $6")
             .bind(filter.category.unwrap_or_else(|| String::from("%")))
             .bind(format!("%{}%", filter.username.unwrap_or_default()))
             .bind(format!("%{}%", filter.search.unwrap_or_default()))
             .bind(filter.user_id.unwrap_or_else(|| String::from("%")))
             .bind(filter.after.unwrap_or(0))
-            .bind(filter.limit.unwrap_or(100))
+            .bind(filter.limit)
             .map(|row: PgRow| Meme {
                 id: row.get("id"),
                 filename: row.get("filename"),
@@ -42,7 +42,7 @@ impl JMServiceInner {
     }
 
     pub async fn get_random_meme(&self, filter: MemeOptions) -> Result<Meme> {
-        let q: Meme = sqlx::query("SELECT memes.id, userid, filename, category, name, extract(epoch FROM timestamp) AS ts, cid FROM memes, users WHERE memes.userid = users.id AND (category LIKE ? AND name LIKE ? AND filename LIKE ? AND memes.userid LIKE ? AND memes.id > ?) ORDER BY RAND() LIMIT 1")
+        let q: Meme = sqlx::query("SELECT memes.id, userid, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.userid = users.id AND (category LIKE $1 AND name LIKE $2 AND filename LIKE $3 AND memes.userid LIKE $4 AND memes.id > $5) ORDER BY RANDOM() LIMIT 1")
             .bind(filter.category.unwrap_or_else(|| String::from("%")))
             .bind(format!("%{}%", filter.username.unwrap_or_default()))
             .bind(format!("%{}%", filter.search.unwrap_or_default()))
@@ -63,7 +63,7 @@ impl JMServiceInner {
 
     pub async fn count_memes(&self, filter: MemeOptions) -> Result<Count> {
         let q: Count = sqlx::query(
-            "SELECT COUNT(id) AS count FROM memes WHERE category LIKE ? AND userid LIKE ?",
+            "SELECT COUNT(id) AS count FROM memes WHERE category LIKE $1 AND userid LIKE $2",
         )
         .bind(filter.category.unwrap_or_else(|| String::from("%")))
         .bind(filter.user_id.unwrap_or_else(|| String::from("%")))
@@ -76,7 +76,7 @@ impl JMServiceInner {
     }
 
     pub async fn get_user_meme(&self, user_id: String, filename: String) -> Result<Option<Meme>> {
-        let q: Option<Meme> = sqlx::query("SELECT memes.id, userid, filename, category, name, extract(epoch FROM timestamp) AS ts, cid FROM memes, users WHERE memes.userid = users.id AND memes.userid = ? AND filename = ? ORDER BY memes.id DESC")
+        let q: Option<Meme> = sqlx::query("SELECT memes.id, userid, filename, category, name, UNIX_TIMESTAMP(timestamp) AS ts, cid FROM memes, users WHERE memes.userid = users.id AND memes.userid = $1 AND filename = $2 ORDER BY memes.id DESC")
             .bind(user_id)
             .bind(filename)
             .map(|row: PgRow| Meme {
@@ -93,7 +93,7 @@ impl JMServiceInner {
     }
 
     pub async fn get_category(&self, id: &String) -> Result<Option<Category>> {
-        let q: Option<Category> = sqlx::query("SELECT * FROM categories WHERE id=?")
+        let q: Option<Category> = sqlx::query("SELECT * FROM categories WHERE id=$1")
             .bind(id)
             .map(|row: PgRow| Category {
                 id: row.get("id"),
@@ -117,9 +117,9 @@ impl JMServiceInner {
 
     pub async fn get_user(&self, identifier: UserIdentifier) -> Result<Option<User>> {
         let query = match identifier {
-            UserIdentifier::Id(id) => sqlx::query("SELECT id, name, COALESCE(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, COALESCE(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT userid, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (userid)) AS count ON users.id = count.userid) AS users LEFT JOIN token ON users.id = token.uid WHERE users.id = ?").bind(id),
-            UserIdentifier::Token(token) => sqlx::query("SELECT id, name, COALESCE(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, COALESCE(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT userid, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (userid)) AS count ON users.id = count.userid) AS users LEFT JOIN token ON users.id = token.uid WHERE token = ?").bind(token),
-            UserIdentifier::Username(name) => sqlx::query("SELECT id, name, COALESCE(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, COALESCE(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT userid, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURDATE() GROUP BY (userid)) AS count ON users.id = count.userid) AS users LEFT JOIN token ON users.id = token.uid WHERE name = ?").bind(name),
+            UserIdentifier::Id(id) => sqlx::query("SELECT id, name, COALESCE(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, COALESCE(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT userid, COUNT(*)::integer AS uploads FROM memes WHERE DATE(timestamp) = CURRENT_DATE GROUP BY (userid)) AS count ON users.id = count.userid) AS users LEFT JOIN token ON users.id = token.uid WHERE users.id = $1").bind(id),
+            UserIdentifier::Token(token) => sqlx::query("SELECT id, name, COALESCE(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, COALESCE(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT userid, COUNT(*)::integer AS uploads FROM memes WHERE DATE(timestamp) = CURRENT_DATE GROUP BY (userid)) AS count ON users.id = count.userid) AS users LEFT JOIN token ON users.id = token.uid WHERE token = $1").bind(token),
+            UserIdentifier::Username(name) => sqlx::query("SELECT id, name, COALESCE(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, COALESCE(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT userid, COUNT(*)::integer AS uploads FROM memes WHERE DATE(timestamp) = CURRENT_DATE GROUP BY (userid)) AS count ON users.id = count.userid) AS users LEFT JOIN token ON users.id = token.uid WHERE name = $1").bind(name),
             UserIdentifier::Null => sqlx::query("SELECT id, name, '0' AS hash, 0 AS uploads FROM users WHERE id = '000'"),
         };
         let q: Option<User> = query
@@ -136,7 +136,7 @@ impl JMServiceInner {
     }
 
     pub async fn get_users(&self) -> Result<Vec<User>> {
-        let q: Vec<User> = sqlx::query("SELECT id, name, COALESCE(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, COALESCE(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT userid, COUNT(*) AS uploads FROM memes WHERE DATE(timestamp) = CURRENT_DATE GROUP BY (userid)) AS count ON users.id = count.userid) AS users LEFT JOIN token ON users.id = token.uid")
+        let q: Vec<User> = sqlx::query("SELECT id, name, COALESCE(MD5(token), '0') AS hash, uploads FROM (SELECT id, name, COALESCE(count.uploads, 0) AS uploads FROM users LEFT JOIN (SELECT userid, COUNT(*)::integer AS uploads FROM memes WHERE DATE(timestamp) = CURRENT_DATE GROUP BY (userid)) AS count ON users.id = count.userid) AS users LEFT JOIN token ON users.id = token.uid")
             .map(|row: PgRow| User {
                 id: row.get("id"),
                 name: row.get("name"),
@@ -159,16 +159,16 @@ impl JMServiceInner {
         file: &IPFSFile,
         ip: &String,
         category: &Category,
-    ) -> Result<u32> {
+    ) -> Result<i64> {
         let mut tx = self.db_pool.begin().await?;
-        sqlx::query("INSERT INTO memes (filename, userid, category, timestamp, ip, cid) VALUES (?, ?, ?, NOW(), ?, ?)")
+        sqlx::query("INSERT INTO memes (filename, userid, category, timestamp, ip, cid) VALUES ($1, $2, $3, NOW(), $4, $5)")
         .bind(&file.name)
         .bind(&user.id)
         .bind(&category.id)
         .bind(ip)
         .bind(&file.hash)
         .execute(&mut tx).await?;
-        let id: u32 = sqlx::query("SELECT LASTVAL() as id")
+        let id: i64 = sqlx::query("SELECT LASTVAL() as id")
             .map(|row: PgRow| row.get("id"))
             .fetch_one(&mut tx)
             .await?;

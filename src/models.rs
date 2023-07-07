@@ -7,7 +7,7 @@ pub struct Meme {
     pub userid: String,
     pub username: String,
     pub category: String,
-    pub timestamp: i64,
+    pub timestamp: i32,
     pub ipfs: String,
 }
 

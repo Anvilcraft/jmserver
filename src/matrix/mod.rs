@@ -38,7 +38,7 @@ impl JMServiceInner {
         filename: String,
         cid: String,
         user: String,
-        id: u32,
+        id: i64,
     ) -> Result<(), ServiceError> {
         let meme = Meme {
             category,
