@@ -4,6 +4,7 @@ use axum::{
     body::{Bytes, Empty},
     response::IntoResponse,
 };
+use hyper::header::InvalidHeaderValue;
 use reqwest::StatusCode;
 use thiserror::Error;
 
@@ -17,6 +18,8 @@ pub enum CDNError {
     Service(#[from] ServiceError),
     #[error("Decode error: {0}")]
     Decode(#[from] FromUtf8Error),
+    #[error("Header error: {0}")]
+    Header(#[from] InvalidHeaderValue),
     #[error("Internal server error")]
     Internal,
 }

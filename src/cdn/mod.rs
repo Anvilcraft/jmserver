@@ -7,7 +7,7 @@ use axum::{
     routing::BoxRoute,
     Router,
 };
-use headers::{ContentType, HeaderMapExt};
+use headers::{ContentType, HeaderMapExt, HeaderValue};
 use reqwest::{
     header::{HeaderName, CONTENT_LENGTH},
     StatusCode,
@@ -38,6 +38,7 @@ async fn image(
 ) -> Result<impl IntoResponse, CDNError> {
     let filename = urlencoding::decode(&filename)?.into_owned();
     let cid = sql::get_cid(user, filename.clone(), &service.db_pool).await?;
+    let ipfs_path = format!("/ipfs/{}", cid);
     let res = service.ipfs_cat(cid).await?;
     let clength = res
         .headers()
@@ -48,6 +49,7 @@ async fn image(
     let ctype = ContentType::from(new_mime_guess::from_path(filename).first_or_octet_stream());
     headers.typed_insert(ctype);
     headers.insert(CONTENT_LENGTH, clength.clone());
+    headers.insert("X-Ipfs-Path", HeaderValue::from_str(ipfs_path.as_str())?);
 
     Ok((
         StatusCode::OK,

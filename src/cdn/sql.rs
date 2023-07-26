@@ -12,11 +12,12 @@ pub async fn get_cid(user: String, filename: String, pool: &PgPool) -> Result<St
 }
 
 pub async fn get_memes(user: String, pool: &PgPool) -> Result<Vec<String>> {
-    let q: Vec<String> = sqlx::query("SELECT filename FROM memes WHERE userid = $1 ORDER BY filename")
-        .bind(user)
-        .map(|row: PgRow| row.get("filename"))
-        .fetch_all(pool)
-        .await?;
+    let q: Vec<String> =
+        sqlx::query("SELECT filename FROM memes WHERE userid = $1 ORDER BY filename")
+            .bind(user)
+            .map(|row: PgRow| row.get("filename"))
+            .fetch_all(pool)
+            .await?;
     Ok(q)
 }
 
