@@ -9,7 +9,8 @@ use crate::{error::JMError, JMService, JMServiceInner};
 pub struct Config {
     pub addr: SocketAddr,
     pub database: String,
-    pub cdn: String,
+    pub int_cdn: String,
+    pub ext_cdn: String,
     pub ipfs_api: Url,
     pub matrix_url: Url,
     pub matrix_token: String,
@@ -23,7 +24,8 @@ impl Config {
             client,
             db_pool,
             ipfs_url: self.ipfs_api.clone(),
-            cdn_url: self.cdn.clone(),
+            int_cdn: self.int_cdn.clone(),
+            ext_cdn: self.ext_cdn.clone(),
             matrix_url: self.matrix_url.clone(),
             matrix_token: self.matrix_token.clone(),
             matrix_domain: self.matrix_domain.clone(),
@@ -32,7 +34,11 @@ impl Config {
 }
 
 impl JMServiceInner {
-    pub fn cdn_url(&self) -> String {
-        self.cdn_url.clone()
+    pub fn int_cdn_url(&self) -> String {
+        self.int_cdn.clone()
+    }
+
+    pub fn ext_cdn_url(&self) -> String {
+        self.ext_cdn.clone()
     }
 }

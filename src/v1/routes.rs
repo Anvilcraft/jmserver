@@ -22,7 +22,7 @@ async fn meme(
             .get_meme(params.id)
             .await?
             .ok_or_else(|| APIError::NotFound("Meme not found".to_string()))?,
-        service.cdn_url(),
+        service.ext_cdn_url(),
     );
     Ok(Json(MemeResponse {
         status: 200,
@@ -39,7 +39,7 @@ async fn memes(
         .get_memes(params.into())
         .await?
         .into_iter()
-        .map(|meme| V1Meme::new(meme, service.cdn_url()))
+        .map(|meme| V1Meme::new(meme, service.ext_cdn_url()))
         .collect();
     Ok(Json(MemesResponse {
         status: 200,
@@ -104,7 +104,7 @@ async fn random(
 ) -> Result<impl IntoResponse, APIError> {
     let random = V1Meme::new(
         service.get_random_meme(params.into()).await?,
-        service.cdn_url(),
+        service.ext_cdn_url(),
     );
     Ok(Json(MemeResponse {
         status: 200,
@@ -181,7 +181,7 @@ async fn upload(
         service.ipfs_pin(f.hash).await?;
         links.push(format!(
             "{}/{}/{}",
-            service.cdn_url(),
+            service.ext_cdn_url(),
             user.id.clone(),
             f.name.clone()
         ));

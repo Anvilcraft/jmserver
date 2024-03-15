@@ -62,7 +62,7 @@ async fn users(Extension(service): Extension<JMService>) -> Result<impl IntoResp
     let users = sql::get_users(&service.db_pool).await?;
     Ok(HtmlTemplate(DirTemplate {
         entries: users,
-        prefix: service.cdn_url(),
+        prefix: service.int_cdn_url(),
         suffix: "/".to_string(),
     }))
 }
